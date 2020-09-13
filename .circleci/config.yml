@@ -9,9 +9,14 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            sudo pip3 install mock mypy
+            sudo pip3 install mock mypy unittest-xml-reporting
+            mkdir results
+      - run:
+          name: Run mypy
+          command: |
+            python3 -m mypy --junit-xml results/TEST-mypy.xml .
       - run:
           name: Run tests
           command: |
-            python3 -m mypy .
             python3 -m unittest discover -v
+            python3 -m xmlrunner -o results discover
