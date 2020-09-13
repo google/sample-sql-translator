@@ -7,11 +7,11 @@ jobs:
     steps:
       - checkout
       - run:
-        name: Install dependencies
-        command: |
-          sudo pip3 install mock mypy
+          name: Install dependencies
+          command: |
+            sudo pip3 install mock mypy
       - run:
-        name: Run tests
-        command: |
-          python3 -m mypy .
-          python3 -m unittest discover -v
+          name: Run tests
+          command: |
+            python3 -m mypy .
+            python3 -m unittest discover -v
