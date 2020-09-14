@@ -1,0 +1,15 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/sample-sql-translator
+    docker:
+      - image: circleci/python:3.8.2
+    steps:
+    - checkout
+    - run:
+      command: |
+        sudo pip3 install mock mypy
+    - run:
+      command: |
+        python3 -m mypy .
+        python3 -m unittest discover -v
