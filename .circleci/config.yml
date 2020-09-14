@@ -1,0 +1,24 @@
+version: 2.1
+jobs:
+  build:
+    working_directory: ~/sample-sql-translator
+    docker:
+      - image: circleci/python:3.8.2
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            sudo pip3 install mock mypy unittest-xml-reporting
+            mkdir results
+      - run:
+          name: Run mypy
+          command: |
+            python3 -m mypy --junit-xml results/TEST-mypy.xml .
+      - run:
+          name: Run tests
+          command: |
+            python3 -m unittest discover -v
+            python3 -m xmlrunner -o results discover
+      - store_test_results:
+          path: results
