@@ -28,7 +28,7 @@ from .ident import SQLIdentifier, SQLIdentifierPath
 from .query import SQLQuery
 from .node import SQLNodeList
 from .node import SQLNode
-from .const import SQLConstant, SQLString
+from .const import SQLConstant, SQLNumber, SQLString
 from .types import SQLType
 from .expr import SQLExpr
 
@@ -73,7 +73,8 @@ class SQLCustomFuncs(SQLExpr):
                 SQLInterval.consume(lex) or
                 SQLAnalyticNavigation.consume(lex) or
                 SQLExtract.consume(lex) or
-                SQLCoalesce.consume(lex))
+                SQLCoalesce.consume(lex) or
+                SQLApproxQuantiles.consume(lex))
 
 
 @dataclass(frozen=True)
@@ -329,3 +330,52 @@ class SQLCoalesce(SQLCustomFuncs):
 
         expr = SQLNodeList(expr)
         return SQLCoalesce(expr)
+
+
+@dataclass(frozen=True)
+class SQLApproxQuantiles(SQLCustomFuncs):
+    expr: SQLNode
+    number: int
+    offset: Optional[int]
+
+    def sqlf(self, compact):
+        if self.offset:
+            return LB([
+                TB('APPROX_QUANTILES('),
+                self.expr.sqlf(compact), TB(','), TB(' '),
+                self.number.parse(compact),
+                TB(')'),
+                TB('[OFFSET('), TB(' '),
+                self.offset.parse(compact),
+                TB(')]')
+            ])
+        else:
+            return LB([
+                TB('APPROX_QUANTILES('),
+                self.expr.sqlf(compact), TB(','), TB(' '),
+                self.number.sqlf(compact),
+                TB(')'),
+            ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLApproxQuantiles]':
+        if not lex.consume('APPROX_QUANTILES'):
+            return None
+        lex.expect('(')
+
+        expr = SQLIdentifierPath.parse(lex)
+
+        lex.expect(',')
+        number = SQLNumber.parse(lex)
+
+        lex.expect(')')
+
+        offset = None
+        if lex.consume('['):
+            lex.expect('OFFSET')
+            lex.consume('(')
+            offset = SQLNumber.parse(lex)
+            lex.consume(')')
+            lex.expect(']')
+
+        return SQLApproxQuantiles(expr, number, offset)

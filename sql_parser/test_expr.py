@@ -158,6 +158,9 @@ class TestExpr(unittest.TestCase):
         self.exprt('INTERVAL(\'1 second\')',
                    'INTERVAL(\'1 second\')')
 
+        # Approx Quantiles
+        self.exprt('APPROX_QUANTILES(x, 100)',
+                   'APPROX_QUANTILES(x,100)')
         # Array AGG
         # TODO(scannell)
 
