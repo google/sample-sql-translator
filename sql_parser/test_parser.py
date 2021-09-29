@@ -90,6 +90,8 @@ class TestParser(unittest.TestCase):
     def test_query_table(self):
         self.assert_sql('SELECT E1 FROM(SELECT stuff FROM t)f',
                         'SELECT E1 FROM(SELECT stuff FROM t)AS f')
+        self.assert_sql('SELECT E1, FROM(SELECT stuff FROM t)f',
+                        'SELECT E1 FROM(SELECT stuff FROM t)AS f')
 
     def test_sub_query(self):
         self.assert_sql('(SELECT F1 FROM stuff)ORDER BY F2',
@@ -147,6 +149,10 @@ class TestParser(unittest.TestCase):
                         'SELECT X FROM Table AS Y FULL OUTER JOIN Table AS X')
         self.assert_sql('SELECT X FROM Table Y FULL JOIN Table X',
                         'SELECT X FROM Table AS Y FULL JOIN Table AS X')
+        self.assert_sql('SELECT X FROM Table Y LEFT JOIN Table X USING(a)',
+                        'SELECT X FROM Table AS Y LEFT JOIN Table AS X ON Y.a=X.a')
+        self.assert_sql('SELECT X FROM Table Y, UNNEST(A) Z',
+                        'SELECT X FROM Table AS Y CROSS JOIN UNNEST(A)AS Z')
 
     def test_truncate(self):
         self.assert_sql('TRUNCATE  TABLE /* b */ tt;',

@@ -146,7 +146,8 @@ class TestExpr(unittest.TestCase):
         # Extract
         self.exprt('extract(minute from MyDate)',
                    'EXTRACT(minute FROM MyDate)')
-
+        self.exprt('extract(minute from MyDate AT TIME ZONE "America/Los_Angeles")',
+                   'EXTRACT(minute FROM MyDate AT TIME ZONE \'America/Los_Angeles\')')
         # Count
         self.exprt('count(a)', 'COUNT(a)')
         self.exprt('count(distinct a)', 'COUNT(DISTINCT a)')
@@ -157,6 +158,9 @@ class TestExpr(unittest.TestCase):
         self.exprt('INTERVAL(\'1 second\')',
                    'INTERVAL(\'1 second\')')
 
+        # Approx Quantiles
+        self.exprt('APPROX_QUANTILES(x, 100)',
+                   'APPROX_QUANTILES(x,100)')
         # Array AGG
         # TODO(scannell)
 
@@ -189,3 +193,7 @@ class TestExpr(unittest.TestCase):
     def test_array_select(self):
         self.exprt('ARRAY(SELECT x FROM abc)',
                    'ARRAY(SELECT x FROM abc)')
+
+    def test_coalesce(self):
+        self.exprt('COALESCE(a, b, c, 0)',
+                    'COALESCE(a,b,c,0)')

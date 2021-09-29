@@ -64,7 +64,7 @@ class SQLConcreteType(SQLType):
         typ = lex.consume_any(['INT64', 'FLOAT64', 'BOOL', 'BYTES', 'DATE',
                                'DATETIME', 'TIME', 'TIMESTAMP', 'STRING',
                                'BIGINT', 'SMALLINT', 'INT4', 'ABSTIME',
-                               'INTEGER'])
+                               'INTEGER', 'BOOLEAN', 'NUMERIC'])
         if not typ:
             return None
 

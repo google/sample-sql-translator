@@ -20,7 +20,7 @@ from typing import Optional
 from rfmt.blocks import LineBlock as LB
 from rfmt.blocks import TextBlock as TB
 
-from .node import SQLNode
+from .node import SQLNode, SQLNodeList
 
 from .ident import SQLIdentifierPath
 from .ident import SQLIdentifier
@@ -49,7 +49,17 @@ class SQLTableSource(SQLNode):
     @staticmethod
     def parse(lex) -> 'SQLTableSource':
         from .query_impl import SQLSubSelect
+        from .expr_funcs import SQLFuncExpr
 
+        if lex.consume('UNNEST'):
+            lex.expect('(')
+            name = SQLIdentifier('UNNEST')
+            arg = SQLIdentifierPath.parse(lex)
+            lex.expect(')')
+            alias = SQLAlias.consume(lex)
+            expr = SQLFuncExpr(SQLNodeList([name]), SQLNodeList([arg]))
+            return SQLFunctionTable(expr, alias)
+        
         if lex.consume('('):
             table = SQLQuery.parse(lex)
             lex.expect(')')
@@ -97,3 +107,18 @@ class SQLQuery(SQLTableSource):
     def consume(lex) -> 'Optional[SQLQuery]':
         from .query_impl import SQLWithSelect
         return SQLWithSelect.consume(lex)
+
+@dataclass(frozen=True)
+class SQLFunctionTable(SQLTableSource):
+    from .expr import SQLExpr
+
+    expr: SQLExpr
+    alias: Optional[SQLAlias] = None
+    is_write: bool = False
+
+    def sqlf(self, compact):
+        expr = self.expr.sqlf(compact)
+        if self.alias is not None:
+            expr = LB(
+                [expr, TB(' '), self.alias.sqlf(True)])
+        return expr

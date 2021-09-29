@@ -23,12 +23,12 @@ from rfmt.blocks import WrapBlock as WB
 
 from .utils import with_commas
 
-from .ident import SQLIdentifier
+from .ident import SQLIdentifier, SQLIdentifierPath
 
 from .query import SQLQuery
 from .node import SQLNodeList
 from .node import SQLNode
-from .const import SQLString
+from .const import SQLConstant, SQLNumber, SQLString
 from .types import SQLType
 from .expr import SQLExpr
 
@@ -72,7 +72,9 @@ class SQLCustomFuncs(SQLExpr):
                 SQLExists.consume(lex) or
                 SQLInterval.consume(lex) or
                 SQLAnalyticNavigation.consume(lex) or
-                SQLExtract.consume(lex))
+                SQLExtract.consume(lex) or
+                SQLCoalesce.consume(lex) or
+                SQLApproxQuantiles.consume(lex))
 
 
 @dataclass(frozen=True)
@@ -153,13 +155,24 @@ class SQLExtract(SQLCustomFuncs):
     name: str
     part: SQLIdentifier
     expr: SQLExpr
+    timezone: Optional[SQLConstant]
 
     def sqlf(self, compact):
-        return LB([
-            TB(self.name), TB('('), self.part.sqlf(compact),
-            TB(' '), TB('FROM'), TB(' '),
-            self.expr.sqlf(compact), TB(')')
-        ])
+        if self.timezone:
+            return LB([
+                TB(self.name), TB('('), self.part.sqlf(compact),
+                TB(' '), TB('FROM'), TB(' '),
+                self.expr.sqlf(compact),
+                TB(' '), TB('AT'), TB(' '), TB('TIME'), TB(' '), TB('ZONE'), TB(' '),
+                self.timezone.sqlf(compact),
+                TB(')')
+            ])
+        else:
+            return LB([
+                TB(self.name), TB('('), self.part.sqlf(compact),
+                TB(' '), TB('FROM'), TB(' '),
+                self.expr.sqlf(compact), TB(')')
+            ])
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLExtract]':
@@ -169,8 +182,13 @@ class SQLExtract(SQLCustomFuncs):
         daypart = SQLIdentifier.parse(lex)
         lex.expect('FROM')
         date_expr = SQLExpr.parse(lex)
+        timezone = None
+        if lex.consume('AT'):
+            lex.expect('TIME ZONE')
+            timezone = SQLString.parse(lex)
         lex.expect(')')
-        return SQLExtract('EXTRACT', daypart, date_expr)
+
+        return SQLExtract('EXTRACT', daypart, date_expr, timezone)
 
 
 @dataclass(frozen=True)
@@ -284,3 +302,80 @@ class SQLDate(SQLCustomFuncs):
         date_part = SQLIdentifier.parse(lex)
         lex.expect(')')
         return SQLDate(name, SQLNodeList((date_expr, count, date_part)))
+
+
+@dataclass(frozen=True)
+class SQLCoalesce(SQLCustomFuncs):
+    expr: SQLNodeList[SQLNode]
+
+    def sqlf(self, compact):
+        return LB([
+            TB('COALESCE('),
+            LB(with_commas(compact, self.expr)),
+            TB(')'),
+        ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLCoalesce]':
+        if not lex.consume('COALESCE'):
+            return None
+        lex.expect('(')
+
+        expr = []
+        while True:
+            expr.append(SQLConstant.parse(lex) or SQLIdentifierPath.parse(lex))
+            if not lex.consume(','):
+                break
+        lex.expect(')')
+
+        expr = SQLNodeList(expr)
+        return SQLCoalesce(expr)
+
+
+@dataclass(frozen=True)
+class SQLApproxQuantiles(SQLCustomFuncs):
+    expr: SQLNode
+    number: int
+    offset: Optional[int]
+
+    def sqlf(self, compact):
+        if self.offset:
+            return LB([
+                TB('APPROX_QUANTILES('),
+                self.expr.sqlf(compact), TB(','), TB(' '),
+                self.number.parse(compact),
+                TB(')'),
+                TB('[OFFSET('), TB(' '),
+                self.offset.parse(compact),
+                TB(')]')
+            ])
+        else:
+            return LB([
+                TB('APPROX_QUANTILES('),
+                self.expr.sqlf(compact), TB(','), TB(' '),
+                self.number.sqlf(compact),
+                TB(')'),
+            ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLApproxQuantiles]':
+        if not lex.consume('APPROX_QUANTILES'):
+            return None
+        lex.expect('(')
+
+        expr = SQLIdentifierPath.parse(lex)
+
+        lex.expect(',')
+        number = SQLNumber.parse(lex)
+
+        lex.expect(')')
+
+        offset = None
+        if lex.consume('['):
+            lex.expect('OFFSET')
+            lex.consume('(')
+            offset = SQLNumber.parse(lex)
+            lex.consume(')')
+            lex.expect(']')
+
+        return SQLApproxQuantiles(expr, number, offset)
