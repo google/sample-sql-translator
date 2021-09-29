@@ -449,9 +449,10 @@ class SQLFrom(SQLNode):
             join = SQLJoin.parse(lex)
             if not join:
                 break
-            join.fix_left_alias(prev_alias)
+            if join.join_keyword == 'USING':
+                join.fix_left_alias(prev_alias)
+                prev_alias = join.table.alias
             joins.append(join)
-            prev_alias = join.table.alias
 
         return SQLFrom(base_table, SQLNodeList(joins))
 
