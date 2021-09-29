@@ -51,7 +51,7 @@ class SQLIdentifier(SQLNode):
                 lex.error('expected identifier'))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLIdentifierPath(SQLExpr):
     names: SQLNodeList[SQLIdentifier]
 
@@ -88,7 +88,7 @@ class SQLIdentifierPath(SQLExpr):
         return SQLIdentifierPath(SQLNodeList(names))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLWildcardPath(SQLIdentifierPath):
     names: SQLNodeList[SQLIdentifier]
     except_ids: SQLNodeList[SQLIdentifier]

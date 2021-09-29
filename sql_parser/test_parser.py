@@ -147,6 +147,8 @@ class TestParser(unittest.TestCase):
                         'SELECT X FROM Table AS Y FULL OUTER JOIN Table AS X')
         self.assert_sql('SELECT X FROM Table Y FULL JOIN Table X',
                         'SELECT X FROM Table AS Y FULL JOIN Table AS X')
+        self.assert_sql('SELECT X FROM Table Y LEFT JOIN Table X USING(a)',
+                        'SELECT X FROM Table AS Y LEFT JOIN Table AS X ON Y.a=X.a')
 
     def test_truncate(self):
         self.assert_sql('TRUNCATE  TABLE /* b */ tt;',

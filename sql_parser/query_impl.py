@@ -30,6 +30,8 @@ from .utils import comments_sqlf
 
 from .const import SQLNumber
 from .ident import SQLIdentifier
+from .ident import SQLIdentifierPath
+from .expr_op import SQLBiOp
 
 from .node import SQLNode
 from .node import SQLNodeList
@@ -441,11 +443,14 @@ class SQLFrom(SQLNode):
         base_table = SQLTableSource.parse(lex)
 
         joins = []
+        prev_alias = base_table.alias
         while True:
             join = SQLJoin.parse(lex)
             if not join:
                 break
+            join.fix_left_alias(prev_alias)
             joins.append(join)
+            prev_alias = join.table.alias
 
         return SQLFrom(base_table, SQLNodeList(joins))
 
@@ -455,6 +460,7 @@ class SQLJoin(SQLNode):
     join_type: str
     table: SQLNode
     join_expr: Optional[SQLNode]
+    join_keyword: Optional[str]
 
     def sqlf(self, compact):
         join_type = TB(self.join_type + ' JOIN ')
@@ -468,7 +474,7 @@ class SQLJoin(SQLNode):
             return compact_sql
         return CB([
             compact_sql, SB([
-                LB([
+                SB([
                     join_type,
                     self.table.sqlf(False),
                     TB(' ON')
@@ -507,6 +513,39 @@ class SQLJoin(SQLNode):
             return None
         join_table = SQLTableSource.parse(lex)
         join_expr = None
+        join_keyword = None
         if lex.consume('ON'):
             join_expr = SQLExpr.parse(lex)
-        return SQLJoin(join_type, join_table, join_expr)
+            join_keyword = 'ON'
+        elif lex.consume('USING'):
+            lex.expect('(')
+            join_expr = None
+            while True:
+                field = SQLIdentifierPath.parse(lex)
+                right = SQLIdentifierPath(SQLNodeList([join_table.alias.alias]) + field.names)
+                if join_expr is None: 
+                    join_expr = SQLBiOp('=', field, right)
+                else:
+                    join_expr = SQLBiOp('AND', join_expr, SQLBiOp('=', field, right))
+                if lex.consume(')'):
+                    break
+                lex.consume(',')
+            join_keyword = 'USING'
+        return SQLJoin(join_type, join_table, join_expr, join_keyword)
+
+    def fix_left_alias(self, alias: SQLAlias):
+        if self.join_keyword != 'USING':
+            return
+        expr = self.join_expr
+        while True:
+            if expr.sql_op == '=':
+                left = expr.left
+                names = left.names   
+                left.names = SQLNodeList([alias.alias]) + names
+                break
+            elif expr.sql_op == 'AND':
+                right_expr = expr.right
+                left = right_expr.left
+                names = left.names   
+                left.names = SQLNodeList([alias.alias]) + names
+                expr = expr.left
