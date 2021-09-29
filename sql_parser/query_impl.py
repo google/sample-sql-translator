@@ -263,9 +263,9 @@ class SQLSelect(SQLQuery):
     @staticmethod
     def parse(lex) -> 'SQLSelect':
 
-        lex.expect('SELECT')
-
         comments = lex.get_comments()
+
+        lex.expect('SELECT')
 
         select_as_type = None
         if lex.consume('AS'):
@@ -281,14 +281,18 @@ class SQLSelect(SQLQuery):
             select_as_type = (lex.consume('STRUCT') or
                               lex.consume('VALUE') or
                               lex.error('Expected STRUCT or VALUE'))
-
+        
+        from_consumed = False
         fields: List[SQLField] = []
         while True:
             fields.append(SQLField.parse(lex))
             if not lex.consume(','):
                 break
+            from_consumed = lex.consume('FROM')
+            if from_consumed:
+                break
 
-        from_tables = lex.consume('FROM') and SQLFrom.parse(lex)
+        from_tables = (from_consumed or lex.consume('FROM')) and SQLFrom.parse(lex)
         where_expr = lex.consume('WHERE') and SQLExpr.parse(lex)
 
         groups: List[SQLField] = []

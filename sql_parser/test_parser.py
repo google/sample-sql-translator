@@ -90,6 +90,8 @@ class TestParser(unittest.TestCase):
     def test_query_table(self):
         self.assert_sql('SELECT E1 FROM(SELECT stuff FROM t)f',
                         'SELECT E1 FROM(SELECT stuff FROM t)AS f')
+        self.assert_sql('SELECT E1, FROM(SELECT stuff FROM t)f',
+                        'SELECT E1 FROM(SELECT stuff FROM t)AS f')
 
     def test_sub_query(self):
         self.assert_sql('(SELECT F1 FROM stuff)ORDER BY F2',
