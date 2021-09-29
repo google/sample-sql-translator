@@ -96,14 +96,14 @@ class SQLWildcardPath(SQLIdentifierPath):
     def sqlf(self, compact):
         words = []
         if self.names:
-            words.append(TB('.'.join(self.names) + '.*'))
+            words.append(TB('.'.join([name.value for name in self.names]) + '.*'))
         else:
             words.append(TB('*'))
         if self.except_ids:
             words.append(TB(' '))
             words.append(TB('EXCEPT('))
-            except_list = [TB(x + ',') for x in self.except_ids[:-1]]
-            except_list.append(TB(self.except_ids[-1]))
+            except_list = [TB(x.value + ',') for x in self.except_ids[:-1]]
+            except_list.append(TB(self.except_ids[-1].value))
             words.append(WB(except_list))
             words.append(TB(')'))
         return LB(words)
