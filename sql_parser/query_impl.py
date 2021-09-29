@@ -54,7 +54,7 @@ class SQLSetOp(SQLQuery):
              self.right.sqlf(compact)])
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLField(SQLNode):
     expr: SQLNode
     alias: Optional[SQLAlias]

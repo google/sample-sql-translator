@@ -30,7 +30,7 @@ from .node import SQLNode
 from .expr import SQLExpr
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLIdentifier(SQLNode):
     value: str
 
