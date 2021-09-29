@@ -258,10 +258,7 @@ class SQLSelect(SQLQuery):
             stack.append(TB('QUALIFY'))
             stack.append(IB(self.qualify_expr.sqlf(compact)))
 
-        return CB([
-            compact_sql,
-            SB(stack)
-        ])
+        return SB(stack)
 
     @staticmethod
     def parse(lex) -> 'SQLSelect':
