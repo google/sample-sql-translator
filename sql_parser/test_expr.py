@@ -189,3 +189,7 @@ class TestExpr(unittest.TestCase):
     def test_array_select(self):
         self.exprt('ARRAY(SELECT x FROM abc)',
                    'ARRAY(SELECT x FROM abc)')
+
+    def test_coalesce(self):
+        self.exprt('COALESCE(a, b, c, 0)',
+                    'COALESCE(a,b,c,0)')

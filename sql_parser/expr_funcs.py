@@ -23,12 +23,12 @@ from rfmt.blocks import WrapBlock as WB
 
 from .utils import with_commas
 
-from .ident import SQLIdentifier
+from .ident import SQLIdentifier, SQLIdentifierPath
 
 from .query import SQLQuery
 from .node import SQLNodeList
 from .node import SQLNode
-from .const import SQLString
+from .const import SQLConstant, SQLString
 from .types import SQLType
 from .expr import SQLExpr
 
@@ -72,7 +72,8 @@ class SQLCustomFuncs(SQLExpr):
                 SQLExists.consume(lex) or
                 SQLInterval.consume(lex) or
                 SQLAnalyticNavigation.consume(lex) or
-                SQLExtract.consume(lex))
+                SQLExtract.consume(lex) or
+                SQLCoalesce.consume(lex))
 
 
 @dataclass(frozen=True)
@@ -284,3 +285,31 @@ class SQLDate(SQLCustomFuncs):
         date_part = SQLIdentifier.parse(lex)
         lex.expect(')')
         return SQLDate(name, SQLNodeList((date_expr, count, date_part)))
+
+
+@dataclass(frozen=True)
+class SQLCoalesce(SQLCustomFuncs):
+    expr: SQLNodeList[SQLNode]
+
+    def sqlf(self, compact):
+        return LB([
+            TB('COALESCE('),
+            LB(with_commas(compact, self.expr)),
+            TB(')'),
+        ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLCoalesce]':
+        if not lex.consume('COALESCE'):
+            return None
+        lex.expect('(')
+
+        expr = []
+        while True:
+            expr.append(SQLConstant.parse(lex) or SQLIdentifierPath.parse(lex))
+            if not lex.consume(','):
+                break
+        lex.expect(')')
+
+        expr = SQLNodeList(expr)
+        return SQLCoalesce(expr)
