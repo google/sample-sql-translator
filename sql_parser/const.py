@@ -69,7 +69,7 @@ class SQLNumber(SQLConstant):
     @staticmethod
     def consume(lex) -> 'Optional[SQLNumber]':
         num = lex.consume_number()
-        if not num:
+        if num is None:
             return None
 
         return SQLNumber(num)
