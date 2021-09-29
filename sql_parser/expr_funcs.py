@@ -154,13 +154,24 @@ class SQLExtract(SQLCustomFuncs):
     name: str
     part: SQLIdentifier
     expr: SQLExpr
+    timezone: Optional[SQLConstant]
 
     def sqlf(self, compact):
-        return LB([
-            TB(self.name), TB('('), self.part.sqlf(compact),
-            TB(' '), TB('FROM'), TB(' '),
-            self.expr.sqlf(compact), TB(')')
-        ])
+        if self.timezone:
+            return LB([
+                TB(self.name), TB('('), self.part.sqlf(compact),
+                TB(' '), TB('FROM'), TB(' '),
+                self.expr.sqlf(compact),
+                TB(' '), TB('AT'), TB(' '), TB('TIME'), TB(' '), TB('ZONE'), TB(' '),
+                self.timezone.sqlf(compact),
+                TB(')')
+            ])
+        else:
+            return LB([
+                TB(self.name), TB('('), self.part.sqlf(compact),
+                TB(' '), TB('FROM'), TB(' '),
+                self.expr.sqlf(compact), TB(')')
+            ])
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLExtract]':
@@ -170,8 +181,13 @@ class SQLExtract(SQLCustomFuncs):
         daypart = SQLIdentifier.parse(lex)
         lex.expect('FROM')
         date_expr = SQLExpr.parse(lex)
+        timezone = None
+        if lex.consume('AT'):
+            lex.expect('TIME ZONE')
+            timezone = SQLString.parse(lex)
         lex.expect(')')
-        return SQLExtract('EXTRACT', daypart, date_expr)
+
+        return SQLExtract('EXTRACT', daypart, date_expr, timezone)
 
 
 @dataclass(frozen=True)

@@ -146,7 +146,8 @@ class TestExpr(unittest.TestCase):
         # Extract
         self.exprt('extract(minute from MyDate)',
                    'EXTRACT(minute FROM MyDate)')
-
+        self.exprt('extract(minute from MyDate AT TIME ZONE "America/Los_Angeles")',
+                   'EXTRACT(minute FROM MyDate AT TIME ZONE \'America/Los_Angeles\')')
         # Count
         self.exprt('count(a)', 'COUNT(a)')
         self.exprt('count(distinct a)', 'COUNT(DISTINCT a)')
