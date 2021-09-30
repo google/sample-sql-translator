@@ -9,6 +9,7 @@ from sql_parser import parse
 class Refactor:
 
     COMMENT_COLUMN_NOT_FOUND = "[WARNING] Could not find column in knowledge: {}"
+    COMMENT_TABLE_NOT_FOUND = "[WARNING] Could not find table in knowledge: {}"
 
     def __init__(self, knowledge:dict):
         self._knowledge = knowledge
@@ -37,8 +38,11 @@ class Refactor:
             self._refactor_node(parsed, tables)
 
     def _refactor_select(self, parsed:SQLSelect):
-        old_tables = self._get_tables_and_alias(parsed.from_tables)
+        old_tables, not_found_tables = self._get_tables_and_alias(parsed.from_tables)
         
+        for table in not_found_tables:
+            parsed.comments.append(self.COMMENT_TABLE_NOT_FOUND.format(table))
+
         self._refactor(parsed.from_tables)
         
         for field in parsed.fields:
@@ -59,6 +63,9 @@ class Refactor:
 
     def _refactor_field(self, parsed:SQLField, tables:dict):
         if isinstance(parsed.expr, SQLIdentifierPath):
+            if len(tables) == 0: # no tables found in knowledge
+                return
+
             first_name = parsed.expr.names[0].value
             relevant_tables = tables
             
@@ -111,12 +118,15 @@ class Refactor:
 
     def _get_tables_and_alias(self, from_tables:SQLFrom) -> dict:
         tables = {}
+        not_found_tables = []
 
         if isinstance(from_tables.base, SQLNamedTable):
             table_id = from_tables.base.table.names[-1].value
             if table_id in self._knowledge.keys():
                 tables[table_id] = None if from_tables.base.alias is None \
                                     else from_tables.base.alias.alias.value
+            else:
+                not_found_tables.append(table_id)
         
         for join_item in from_tables.joins:
             if isinstance(join_item.table, SQLNamedTable):
@@ -124,8 +134,11 @@ class Refactor:
                 if table_id in self._knowledge.keys():
                     tables[table_id] = None if join_item.alias is None \
                                         else join_item.alias.alias.value
+                else:
+                    not_found_tables.append(table_id)
         
-        return tables
+        not_found_tables = set(not_found_tables)
+        return tables, not_found_tables
 
     def _get_column_knowledge(self, tables:dict):
         column_knowledge = {}

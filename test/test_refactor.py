@@ -76,3 +76,18 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_table_not_found(self):
+        sql = """
+        SELECT column_1
+        FROM table_x
+        """
+
+        reference = """
+        -- [WARNING] Could not find table in knowledge: table_x
+        SELECT
+            column_1
+        FROM table_x
+        """
+
+        self._assert_equal_sql(sql, reference)
