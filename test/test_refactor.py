@@ -91,3 +91,24 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_field_function(self):
+        sql = """
+        SELECT 
+        CAST(column_1 AS STRING) AS new_column_1, column_2
+        FROM table_a
+        WHERE 
+        CAST(column_1 AS STRING) = "column_name"
+        """
+
+        reference = """
+        SELECT
+        CAST(new_column_1 AS STRING) AS new_column_1,
+        new_column_2 AS column_2
+        FROM
+        `new_table_a`
+        WHERE
+        CAST(new_column_1 AS STRING) = 'column_name'
+        """
+
+        self._assert_equal_sql(sql, reference)

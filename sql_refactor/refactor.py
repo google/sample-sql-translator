@@ -93,6 +93,9 @@ class Refactor:
             elif new_column_name == parsed.alias.value:
                 parsed.alias = None
 
+        else:
+            self._refactor(parsed.expr, tables)
+
     def _refactor_identifier_path(self, parsed:SQLIdentifierPath, tables):
         if tables is None:
             return
