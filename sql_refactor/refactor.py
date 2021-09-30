@@ -7,6 +7,9 @@ from sql_parser import parse
 
 
 class Refactor:
+
+    COMMENT_COLUMN_NOT_FOUND = "[WARNING] Could not find column in knowledge: {}"
+
     def __init__(self, knowledge:dict):
         self._knowledge = knowledge
         self.parsed = None
@@ -70,9 +73,9 @@ class Refactor:
             old_column_name = parsed.expr.names[-1].value
 
             if old_column_name not in column_knowledge.keys():
-                #TODO: append a comment
+                parsed.comments.append(self.COMMENT_COLUMN_NOT_FOUND.format(old_column_name))
                 return
-
+                
             new_column_name = column_knowledge[old_column_name]
             parsed.expr.names[-1].value = new_column_name
 

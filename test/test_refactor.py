@@ -60,3 +60,19 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_column_not_found(self):
+        sql = """
+        SELECT column_1, column_0
+        FROM table_a
+        """
+
+        reference = """
+        SELECT 
+            new_column_1 AS column_1, 
+            -- [WARNING] Could not find column in knowledge: column_0
+            column_0
+        FROM new_table_a
+        """
+
+        self._assert_equal_sql(sql, reference)
