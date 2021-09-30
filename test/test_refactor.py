@@ -45,3 +45,18 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_select_where(self):
+        sql = """
+        SELECT column_1, column_2
+        FROM table_a
+        WHERE column_1 = 1
+        """
+
+        reference = """
+        SELECT new_column_1 AS column_1, new_column_2 AS column_2
+        FROM new_table_a
+        WHERE new_column_1 = 1
+        """
+
+        self._assert_equal_sql(sql, reference)

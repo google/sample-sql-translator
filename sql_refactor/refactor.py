@@ -28,8 +28,10 @@ class Refactor:
             self._refactor_named_table(parsed)
         elif isinstance(parsed, SQLField):
             self._refactor_field(parsed, tables)
+        elif isinstance(parsed, SQLIdentifierPath):
+            self._refactor_identifier_path(parsed, tables)
         elif isinstance(parsed, SQLNode):
-            self._refactor_node(parsed)
+            self._refactor_node(parsed, tables)
 
     def _refactor_select(self, parsed:SQLSelect):
         old_tables = self._get_tables_and_alias(parsed.from_tables)
@@ -38,8 +40,10 @@ class Refactor:
         
         for field in parsed.fields:
             self._refactor(field, old_tables)
-        
 
+        if parsed.where_expr is not None:
+            self._refactor(parsed.where_expr, old_tables)
+        
     def _refactor_from(self, parsed:SQLFrom):
         self._refactor(parsed.base)
         #TODO: refactor joins
@@ -78,11 +82,29 @@ class Refactor:
                     parsed.alias = SQLAlias(SQLIdentifier(old_column_name))
             elif new_column_name == parsed.alias.value:
                 parsed.alias = None
-            
 
-    def _refactor_node(self, parsed:SQLNode):
+    def _refactor_identifier_path(self, parsed:SQLIdentifierPath, tables):
+        if tables is None:
+            return
+        
+        first_name = parsed.names[0].value
+        relevant_tables = tables
+
+        # check whether first_name is table's alias
+        for table_id, alias in tables.items():
+            if alias == first_name:
+                relevant_tables = [table_id]
+                break
+        
+        column_knowledge = self._get_column_knowledge(relevant_tables)
+
+        old_column_name = parsed.names[-1].value
+        new_column_name = column_knowledge[old_column_name]
+        parsed.names[-1].value = new_column_name
+
+    def _refactor_node(self, parsed:SQLNode, tables:dict=None):
         for _, val in parsed.children():
-            self._refactor(val)
+            self._refactor(val, tables)
 
     def _get_tables_and_alias(self, from_tables:SQLFrom) -> dict:
         tables = {}
