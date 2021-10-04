@@ -75,7 +75,8 @@ class Refactor:
     def _refactor_named_table(self, parsed:SQLNamedTable):
         table_id = parsed.table.names[-1].value
         if table_id in self._knowledge.keys():
-            table_id = self._knowledge[table_id]['new_table']
+            if not self._knowledge[table_id]['preserved']:
+                table_id = self._knowledge[table_id]['new_table']
         parsed.table.names[-1].value = '`' + table_id + '`'
 
     def _refactor_field(self, parsed:SQLField, tables:dict):
@@ -174,11 +175,16 @@ class Refactor:
         column_knowledge = {}
         for table, alias in tables.items():
             column_knowledge_from_table = copy.copy(self._knowledge[table]['column_knowledge'])
-            if alias:
+            if self._knowledge[table]['preserved']:
                 column_knowledge_from_table = {
-                                                old_column : '{}.{}'.format(alias, new_column)
-                                                for old_column, new_column in column_knowledge_from_table.items()
+                                                old_column : old_column
+                                                for old_column, _ in column_knowledge_from_table.items()
                                             }
+            if alias:
+                    column_knowledge_from_table = {
+                                                    old_column : '{}.{}'.format(alias, new_column)
+                                                    for old_column, new_column in column_knowledge_from_table.items()
+                                                }
             column_knowledge.update(column_knowledge_from_table)
             
         return column_knowledge

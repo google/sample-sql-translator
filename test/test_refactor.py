@@ -16,7 +16,8 @@ class TestRefactor(unittest.TestCase):
                                 'column_1' : 'new_column_1',
                                 'column_2' : 'new_column_2',
                                 'column_3' : 'new_column_3',
-                            }
+                            },
+                            'preserved' : False
                         },
                         'table_b':
                         {
@@ -25,7 +26,8 @@ class TestRefactor(unittest.TestCase):
                             {
                                 'column_1' : 'new_column_1b',
                                 'column_2b' : 'new_column_2b',
-                            }
+                            },
+                            'preserved' : False
                         },
                         'table_c':
                         {
@@ -33,7 +35,18 @@ class TestRefactor(unittest.TestCase):
                             'column_knowledge':
                             {
                                 'column_1c' : 'new_column_1c',
-                            }
+                            },
+                            'preserved' : False
+                        },
+                        'table_d':
+                        {
+                            'new_table' : None,
+                            'column_knowledge': 
+                            {
+                                'column_1' : None,
+                                'column_2' : None,
+                            },
+                            'preserved' : True
                         }
                     }
         
@@ -201,6 +214,19 @@ class TestRefactor(unittest.TestCase):
         LEFT JOIN new_table_b AS b ON a.new_column_1 = b.new_column_1b
         WHERE 
         CAST(b.new_column_1b AS STRING) = 'column_name'
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+    def test_preserved(self):
+        sql = """
+        SELECT column_1, column_2
+        FROM table_d
+        """
+
+        reference = """
+        SELECT column_1, column_2
+        FROM table_d
         """
 
         self._assert_equal_sql(sql, reference)

@@ -16,6 +16,7 @@ The structure of the knowledge:
             "column_2" : "new_column_2",
 
         }
+        "preserved" : boolean
     },
     .
     .
