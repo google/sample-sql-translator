@@ -17,6 +17,23 @@ class TestRefactor(unittest.TestCase):
                                 'column_2' : 'new_column_2',
                                 'column_3' : 'new_column_3',
                             }
+                        },
+                        'table_b':
+                        {
+                            'new_table' : 'new_table_b',
+                            'column_knowledge':
+                            {
+                                'column_1' : 'new_column_1b',
+                                'column_2b' : 'new_column_2b',
+                            }
+                        },
+                        'table_c':
+                        {
+                            'new_table' : 'new_table_c',
+                            'column_knowledge':
+                            {
+                                'column_1c' : 'new_column_1c',
+                            }
                         }
                     }
         
@@ -109,6 +126,81 @@ class TestRefactor(unittest.TestCase):
         `new_table_a`
         WHERE
         CAST(new_column_1 AS STRING) = 'column_name'
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+    def test_join(self):
+        # LEFT JOIN ON
+        sql = """
+        SELECT 
+        CAST(a.column_1 AS STRING) AS new_column_1,
+        column_2,
+        b.column_1 AS column_1b,
+        column_2b,
+        FROM table_a AS a
+        LEFT JOIN table_b AS b ON a.column_1 = b.column_1
+        WHERE 
+        CAST(b.column_1 AS STRING) = "column_name"
+        """
+
+        reference = """
+        SELECT 
+        CAST(a.new_column_1 AS STRING) AS new_column_1,
+        a.new_column_2 AS column_2,
+        b.new_column_1b AS column_1b,
+        b.new_column_2b AS column_2b,
+        FROM new_table_a AS a
+        LEFT JOIN new_table_b AS b ON a.new_column_1 = b.new_column_1b
+        WHERE 
+        CAST(b.new_column_1b AS STRING) = 'column_name'
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        # CROSS JOIN
+        sql = """
+        SELECT 
+        column_1, column_1c
+        FROM table_a, table_c
+        WHERE 
+        CAST(column_1 AS STRING) = "column_name"
+        """
+
+        reference = """
+        SELECT 
+        new_column_1 AS column_1,
+        new_column_1c AS column_1c
+        FROM new_table_a, new_table_c
+        WHERE 
+        CAST(new_column_1 AS STRING) = "column_name"
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        # LEFT JOIN USING
+        sql = """
+        SELECT 
+        CAST(a.column_1 AS STRING) AS new_column_1,
+        column_2,
+        b.column_1 AS column_1b,
+        column_2b,
+        FROM table_a AS a
+        LEFT JOIN table_b AS b USING(column_1)
+        WHERE 
+        CAST(b.column_1 AS STRING) = "column_name"
+        """
+
+        reference = """
+        SELECT 
+        CAST(a.new_column_1 AS STRING) AS new_column_1,
+        a.new_column_2 AS column_2,
+        b.new_column_1b AS column_1b,
+        b.new_column_2b AS column_2b,
+        FROM new_table_a AS a
+        LEFT JOIN new_table_b AS b ON a.new_column_1 = b.new_column_1b
+        WHERE 
+        CAST(b.new_column_1b AS STRING) = 'column_name'
         """
 
         self._assert_equal_sql(sql, reference)
