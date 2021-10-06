@@ -230,3 +230,48 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_with(self):
+        sql = """
+        WITH cte_a AS(
+            SELECT column_1, column_2
+            FROM table_a
+        )
+        SELECT column_1, column_2 FROM cte_a
+        """
+
+        reference = """
+        WITH cte_a AS(
+            SELECT new_column_1 AS column_1, new_column_2 AS column_2
+            FROM new_table_a
+        )
+        SELECT column_1, column_2 FROM cte_a
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        WITH cte_a AS(
+            WITH cte_a AS(
+                SELECT column_1 AS c1, column_2
+                FROM table_a
+            )
+            SELECT c1 AS column_1, column_2
+            FROM cte_a
+        )
+        SELECT column_1, column_2 FROM cte_a
+        """
+
+        reference = """
+        WITH cte_a AS(
+            WITH cte_a AS(
+                SELECT new_column_1 AS c1, new_column_2 AS column_2
+                FROM new_table_a
+            )
+            SELECT c1 AS column_1, column_2
+            FROM cte_a
+        )
+        SELECT column_1, column_2 FROM cte_a
+        """
+
+        self._assert_equal_sql(sql, reference)

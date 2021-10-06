@@ -1,7 +1,7 @@
 from sql_parser.ident import SQLIdentifier, SQLIdentifierPath
 from sql_parser.query import SQLAlias, SQLNamedTable
 from sql_parser.node import SQLNode, SQLNodeList
-from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect
+from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLWithSelect
 
 from sql_parser import parse
 
@@ -26,7 +26,9 @@ class Refactor:
         self._refactor(self.parsed)
 
     def _refactor(self, parsed, tables=None):
-        if isinstance(parsed, SQLSelect):
+        if isinstance(parsed, SQLWithSelect):
+            self._refactor_with_select(parsed)
+        elif isinstance(parsed, SQLSelect):
             self._refactor_select(parsed)
         elif isinstance(parsed, SQLFrom):
             self._refactor_from(parsed)
@@ -40,6 +42,31 @@ class Refactor:
             self._refactor_identifier_path(parsed, tables)
         elif isinstance(parsed, SQLNode):
             self._refactor_node(parsed, tables)
+
+    def _refactor_with_select(self, parsed:SQLWithSelect):
+        cte_tables = [table.value for table in parsed.tables]
+        for i, cte in enumerate(parsed.sqls):
+            self._refactor(parsed.sqls)
+            
+            # Add CTE into current knowledge
+            column_knowledge = {}
+            for field in cte.select.fields:
+                if field.alias:
+                    column_knowledge[field.alias.alias.value] = None
+                else:
+                    column_knowledge[field.expr.names[-1].value] = None
+            self._knowledge[cte_tables[i]] = {
+                'new_table' : None,
+                'column_knowledge' : column_knowledge,
+                'preserved' : True
+            }
+
+        self._refactor(parsed.select)
+
+        # delete unused cte knowledge
+        for cte_table in cte_tables:
+            self._knowledge.pop(cte_table)
+
 
     def _refactor_select(self, parsed:SQLSelect):
         old_tables, not_found_tables = self._get_tables_and_alias(parsed.from_tables)
@@ -137,8 +164,9 @@ class Refactor:
                 break
         
         column_knowledge = self._get_column_knowledge(relevant_tables)
-
         old_column_name = parsed.names[-1].value
+        if old_column_name not in column_knowledge.keys():
+            return
         new_column_name_path = column_knowledge[old_column_name].split('.')
         new_column_name_identifier_path = [SQLIdentifier(name) for name in new_column_name_path]
         parsed.names = SQLNodeList(new_column_name_identifier_path)
@@ -174,6 +202,8 @@ class Refactor:
     def _get_column_knowledge(self, tables:dict):
         column_knowledge = {}
         for table, alias in tables.items():
+            if table not in self._knowledge.keys():
+                continue
             column_knowledge_from_table = copy.copy(self._knowledge[table]['column_knowledge'])
             if self._knowledge[table]['preserved']:
                 column_knowledge_from_table = {
