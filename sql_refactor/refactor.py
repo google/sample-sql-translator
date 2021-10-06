@@ -1,3 +1,4 @@
+from sql_parser.dml import SQLCreate
 from sql_parser.ident import SQLIdentifier, SQLIdentifierPath
 from sql_parser.query import SQLAlias, SQLNamedTable
 from sql_parser.node import SQLNode, SQLNodeList
@@ -15,15 +16,26 @@ class Refactor:
 
     def __init__(self, knowledge:dict):
         self._knowledge = knowledge
-        self.parsed = None
+        self.parsed = []
 
     def result(self):
         if self.parsed:
-            return self.parsed.as_sql()
+            sql = ""
+            for parsed in self.parsed[:-1]:
+                sql += '{}\n;\n\n'.format(parsed.as_sql())
+            sql += self.parsed[-1].as_sql()
+            return sql
 
-    def refactor(self, sql):
-        self.parsed = parse(sql)
-        self._refactor(self.parsed)
+    def refactor(self, sql, parse_only=False):
+        self.parsed = []
+        sql_commands = sql.strip('\n').split(';')
+        for command in sql_commands:
+            if command in ('', '\n'):
+                continue
+            parsed = parse(command)
+            self.parsed.append(parsed)
+            if not parse_only:
+                self._refactor(parsed)
 
     def _refactor(self, parsed, tables=None):
         if isinstance(parsed, SQLWithSelect):
@@ -40,6 +52,8 @@ class Refactor:
             self._refactor_field(parsed, tables)
         elif isinstance(parsed, SQLIdentifierPath):
             self._refactor_identifier_path(parsed, tables)
+        elif isinstance(parsed, SQLCreate):
+            self._refactor_create(parsed)
         elif isinstance(parsed, SQLNode):
             self._refactor_node(parsed, tables)
 
@@ -47,7 +61,7 @@ class Refactor:
         cte_tables = [table.value for table in parsed.tables]
         for i, cte in enumerate(parsed.sqls):
             self._refactor(parsed.sqls)
-            
+
             # Add CTE into current knowledge
             column_knowledge = {}
             for field in cte.select.fields:
@@ -170,6 +184,24 @@ class Refactor:
         new_column_name_path = column_knowledge[old_column_name].split('.')
         new_column_name_identifier_path = [SQLIdentifier(name) for name in new_column_name_path]
         parsed.names = SQLNodeList(new_column_name_identifier_path)
+
+    def _refactor_create(self, parsed:SQLCreate):
+        self._refactor(parsed.query)
+
+        # Add CTE into current knowledge
+        cte_table = parsed.table.table.names[-1].value
+        column_knowledge = {}
+        for field in parsed.query.select.fields:
+            if field.alias:
+                column_knowledge[field.alias.alias.value] = None
+            else:
+                column_knowledge[field.expr.names[-1].value] = None
+        self._knowledge[cte_table] = {
+            'new_table' : None,
+            'column_knowledge' : column_knowledge,
+            'preserved' : True
+        }
+
 
     def _refactor_node(self, parsed:SQLNode, tables:dict=None):
         for _, val in parsed.children():

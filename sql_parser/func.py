@@ -82,13 +82,11 @@ class SQLFunction(SQLNode):
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLFunction]':
-        if not (lex.consume(['CREATE', 'TEMP']) or
-                lex.consume(['CREATE', 'TEMPORARY'])):
+        if not (lex.consume(['CREATE', 'TEMP', 'FUNCTION']) or
+                lex.consume(['CREATE', 'TEMPORARY', 'FUNCTION'])):
             return None
 
         comments = lex.get_comments()
-
-        lex.expect('FUNCTION')
 
         name = (SQLIdentifier.consume(lex) or
                 lex.error('Expected UDF name'))

@@ -1,6 +1,5 @@
 import unittest
 from sql_refactor.refactor import Refactor
-from sql_parser import parse
 
 class TestRefactor(unittest.TestCase):
 
@@ -49,8 +48,6 @@ class TestRefactor(unittest.TestCase):
                             'preserved' : True
                         }
                     }
-        
-
         self.command = Refactor(knowledge)
 
     def _assert_equal_sql(self, sql, reference):
@@ -58,8 +55,9 @@ class TestRefactor(unittest.TestCase):
         refactored = self.command.result()
         refactored = refactored.replace('`', '')
 
-        reference_parsed = parse(reference)
-        reference = reference_parsed.as_sql(False)
+        self.command.refactor(reference, parse_only=True)
+        reference = self.command.result()
+        reference = reference.replace('`', '')
 
         return self.assertEqual(refactored, reference)
 
@@ -272,6 +270,55 @@ class TestRefactor(unittest.TestCase):
             FROM cte_a
         )
         SELECT column_1, column_2 FROM cte_a
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+    def test_temp_table(self):
+        sql = """
+        CREATE TEMP TABLE cte_a AS
+        SELECT column_1, column_2 FROM table_a;
+        
+        SELECT column_1, column_2
+        FROM cte_a
+        """
+
+        reference = """
+        CREATE TEMP TABLE cte_a AS
+        SELECT new_column_1 AS column_1,
+        new_column_2 AS column_2 
+        FROM new_table_a;
+        
+        SELECT column_1, column_2
+        FROM cte_a
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        CREATE TEMP TABLE cte_a AS
+        SELECT column_1, column_2 FROM table_a;
+        
+        CREATE TEMP TABLE cte_b AS
+        SELECT column_1, column_2b AS column_2 from table_b;
+
+        SELECT a.column_1, b.column_2
+        FROM cte_a AS a
+        LEFT JOIN cte_b AS b
+        USING(column_1)
+        """
+
+        reference = """
+        CREATE TEMP TABLE cte_a AS
+        SELECT new_column_1 AS column_1, new_column_2 AS column_2 FROM new_table_a;
+        
+        CREATE TEMP TABLE cte_b AS
+        SELECT new_column_1b AS column_1, new_column_2b AS column_2 from new_table_b;
+
+        SELECT a.column_1, b.column_2
+        FROM cte_a AS a
+        LEFT JOIN cte_b AS b
+        USING(column_1)
         """
 
         self._assert_equal_sql(sql, reference)
