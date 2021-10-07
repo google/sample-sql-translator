@@ -322,3 +322,68 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+
+    def test_wildcard(self):
+        sql = """
+        SELECT * FROM table_a
+        """
+
+        reference = """
+        SELECT new_column_1 AS column_1,
+        new_column_2 AS column_2,
+        new_column_3 AS column_3
+        FROM new_table_a
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        SELECT * EXCEPT(column_2) FROM table_a
+        """
+
+        reference = """
+        SELECT new_column_1 AS column_1,
+        new_column_3 AS column_3
+        FROM new_table_a
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        SELECT a.* EXCEPT(column_2) , b.column_2b
+        FROM table_a As a
+        LEFT JOIN table_b AS b
+        ON a.column_1 = b.column_1
+        """
+
+        reference = """
+        SELECT  
+        a.new_column_1 AS column_1,
+        a.new_column_3 AS column_3,
+        b.new_column_2b AS column_2b
+        FROM new_table_a As a
+        LEFT JOIN new_table_b AS b
+        ON a.new_column_1 = b.new_column_1b
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        SELECT b.column_2b, a.* EXCEPT(column_2)
+        FROM table_a As a
+        LEFT JOIN table_b AS b
+        ON a.column_1 = b.column_1
+        """
+
+        reference = """
+        SELECT  
+        b.new_column_2b AS column_2b,
+        a.new_column_1 AS column_1,
+        a.new_column_3 AS column_3
+        FROM new_table_a As a
+        LEFT JOIN new_table_b AS b
+        ON a.new_column_1 = b.new_column_1b
+        """
+
+        self._assert_equal_sql(sql, reference)

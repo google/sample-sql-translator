@@ -194,7 +194,7 @@ class SQLOrderedQuery(SQLQuery):
         ])
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLSelect(SQLQuery):
     fields: SQLNodeList[SQLField]
     where_expr: Optional[SQLExpr] = None

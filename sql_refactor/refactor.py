@@ -1,5 +1,5 @@
 from sql_parser.dml import SQLCreate
-from sql_parser.ident import SQLIdentifier, SQLIdentifierPath
+from sql_parser.ident import SQLIdentifier, SQLIdentifierPath, SQLWildcardPath
 from sql_parser.query import SQLAlias, SQLNamedTable
 from sql_parser.node import SQLNode, SQLNodeList
 from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLWithSelect
@@ -90,8 +90,67 @@ class Refactor:
 
         self._refactor(parsed.from_tables)
         
-        for field in parsed.fields:
+        index = 0
+        while True:
+            field = parsed.fields[index]
+            
+            # Wildcard
+            if isinstance(field.expr, SQLWildcardPath):
+                if len(old_tables) == 1:
+                    column_knowledge = self._get_column_knowledge(old_tables)
+                    
+                    # Omit columns in EXCEPT
+                    except_ids = [column_id.value for column_id in field.expr.except_ids]
+                    column_names = []
+                    for id in column_knowledge.keys():
+                        if id not in except_ids:
+                            column_names.append(id)
+                    
+                    columns = [ 
+                                SQLField(
+                                    SQLIdentifierPath(
+                                        SQLNodeList([SQLIdentifier(column_name)])
+                                    ), None, []
+                                )
+                                for column_name in column_names
+                            ]
+                else:
+                    table_alias = field.expr.names[0].value
+                    table = None
+                    for t, a in old_tables.items():
+                        if a == table_alias:
+                            table = t
+                            break
+                    column_knowledge = self._get_column_knowledge({table: table_alias})
+
+                    # Omit columns in EXCEPT
+                    except_ids = [column_id.value for column_id in field.expr.except_ids]
+                    column_names = []
+                    for id in column_knowledge.keys():
+                        if id not in except_ids:
+                            column_names.append(id)
+
+                    columns = [ SQLField(
+                                    SQLIdentifierPath(SQLNodeList(
+                                        [SQLIdentifier(table_alias), SQLIdentifier(column_name)])
+                                    ), None, []
+                                )
+                                for column_name in column_names
+                            ]
+                
+                # Insert new column list from wildcard to fields
+                if index == 0:
+                    parsed.fields = SQLNodeList(columns) + parsed.fields[index+1:]
+                else:
+                    parsed.fields = parsed.fields[:index] + SQLNodeList(columns) + parsed.fields[index+1:]
+                field = parsed.fields[index]
+
+            # Identifier Path
             self._refactor(field, old_tables)
+            
+            index += 1
+            if index == len(parsed.fields):
+                break
 
         if parsed.where_expr is not None:
             self._refactor(parsed.where_expr, old_tables)
