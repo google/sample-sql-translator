@@ -109,6 +109,7 @@ class SQLArrayAgg(SQLExpr):
     nulls: Optional[str]
     order_limit_offset: Optional[SQLOrderLimitOffset]
     analytic: Optional[SQLNode]
+    offset: Optional[int]
 
     def sqlf(self, compact):
         lines = [TB('ARRAY_AGG(')]
@@ -122,6 +123,11 @@ class SQLArrayAgg(SQLExpr):
         if self.analytic:
             lines.append(self.analytic.sqlf(True))
         lines.append(TB(')'))
+        if self.offset:
+            lines.append(TB('[OFFSET('))
+            lines.append(TB(' ') )
+            lines.append(self.offset.sqlf(compact))
+            lines.append(TB(')]'))
 
         compact_sql = LB(lines)
 
@@ -143,6 +149,11 @@ class SQLArrayAgg(SQLExpr):
             indent.append(self.analytic.sqlf(compact))
         stack.append(IB(SB(indent)))
         stack.append(TB(')'))
+        if self.offset:
+            stack.append(TB('[OFFSET('))
+            stack.append(TB(' ') )
+            stack.append(self.offset.sqlf(compact))
+            stack.append(TB(')]'))
 
         return CB([
             compact_sql,
@@ -174,8 +185,16 @@ class SQLArrayAgg(SQLExpr):
 
         lex.expect(')')
 
+        offset = None
+        if lex.consume('['):
+            lex.expect('OFFSET')
+            lex.consume('(')
+            offset = SQLNumber.parse(lex)
+            lex.consume(')')
+            lex.expect(']')
+
         return SQLArrayAgg(is_distinct, expr, nulls,
-                           order_limit_offset, analytic)
+                           order_limit_offset, analytic, offset)
 
 
 @dataclass(frozen=True)
@@ -242,7 +261,7 @@ class SQLAnalytic(SQLExpr):
             lines.append(TB('PARTITION BY '))
             lines.extend(with_commas(True, self.partition_by, ' '))
         if self.order_by:
-            lines.append(TB('ORDER BY '))
+            lines.append(TB(' ORDER BY '))
             lines.extend(with_commas(True, self.order_by, ' '))
         if self.range_desc:
             lines.append(TB(self.range_desc))

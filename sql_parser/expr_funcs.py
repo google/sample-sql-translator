@@ -375,7 +375,7 @@ class SQLApproxQuantiles(SQLCustomFuncs):
                 self.number.parse(compact),
                 TB(')'),
                 TB('[OFFSET('), TB(' '),
-                self.offset.parse(compact),
+                self.offset.sqlf(compact),
                 TB(')]')
             ])
         else:
