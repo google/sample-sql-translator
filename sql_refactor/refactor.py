@@ -1,8 +1,9 @@
+from sql_parser import query
 from sql_parser.dml import SQLCreate
 from sql_parser.ident import SQLIdentifier, SQLIdentifierPath, SQLWildcardPath
 from sql_parser.query import SQLAlias, SQLNamedTable
 from sql_parser.node import SQLNode, SQLNodeList
-from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLSetOp, SQLSubSelect, SQLWithSelect
+from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLOrderedQuery, SQLSelect, SQLSetOp, SQLSubSelect, SQLWithSelect
 
 from sql_parser import parse
 
@@ -72,6 +73,8 @@ class Refactor:
 
             if isinstance(cte.select, SQLSetOp) and cte.select.op in ('UNION', 'UNION ALL'):
                 select_statement = cte.select.left
+            elif isinstance(cte.select, SQLOrderedQuery):
+                select_statement = cte.select.query
             else:
                 select_statement = cte.select
 
@@ -196,6 +199,8 @@ class Refactor:
 
             if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL'):
                 select_statement = sub_select.query.select.left
+            elif isinstance(sub_select.query.select, SQLOrderedQuery):
+                select_statement = sub_select.query.select.query
             else:
                 select_statement = sub_select.query.select
 
@@ -233,6 +238,8 @@ class Refactor:
 
                 if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL'):
                     select_statement = sub_select.query.select.left
+                elif isinstance(sub_select.query.select, SQLOrderedQuery):
+                    select_statement = sub_select.query.select.query
                 else:
                     select_statement = sub_select.query.select
                     
@@ -336,6 +343,8 @@ class Refactor:
 
         if isinstance(parsed.query.select, SQLSetOp) and parsed.query.select.op in ('UNION', 'UNION ALL'):
             select_statement = parsed.query.select.left
+        elif isinstance(parsed.query.select, SQLOrderedQuery):
+            select_statement = parsed.query.select.query
         else:
             select_statement = parsed.query.select
 

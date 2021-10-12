@@ -500,3 +500,26 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_ordered_query(self):
+        sql = """
+        WITH ta AS (
+            SELECT column_1, column_2
+            FROM table_a
+            order by column_1
+        )
+        SELECT *
+        FROM ta
+        """
+
+        reference = """
+        WITH ta AS (
+            SELECT new_column_1 AS column_1, new_column_2 AS column_2
+            FROM new_table_a
+            order by column_1
+        )
+        SELECT column_1, column_2
+        FROM ta
+        """
+
+        self._assert_equal_sql(sql, reference)

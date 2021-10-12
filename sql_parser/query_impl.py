@@ -525,7 +525,7 @@ class SQLJoin(SQLNode):
             while True:
                 field = SQLIdentifierPath.parse(lex)
                 if join_table.alias is None:
-                    join_table.alias = SQLAlias(join_table.table.names[-1])
+                    join_table.alias = SQLAlias(SQLIdentifier(join_table.table.names[-1].value))
                 right = SQLIdentifierPath(SQLNodeList([join_table.alias.alias]) + field.names)
                 if join_expr is None: 
                     join_expr = SQLBiOp('=', field, right)
