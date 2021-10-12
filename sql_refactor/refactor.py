@@ -178,6 +178,9 @@ class Refactor:
             self._refactor(parsed.where_expr, old_tables)
         
     def _refactor_from(self, parsed:SQLFrom):
+        if parsed is None:
+            return
+
         tables = {}
         if isinstance(parsed.base, SQLNamedTable):
             table_id = parsed.base.table.names[0].value
@@ -371,6 +374,9 @@ class Refactor:
         tables = {}
         not_found_tables = []
 
+        if from_tables is None:
+            return tables, not_found_tables
+            
         if isinstance(from_tables.base, SQLNamedTable):
             table_id = from_tables.base.table.names[-1].value
             if table_id in self._knowledge.keys():

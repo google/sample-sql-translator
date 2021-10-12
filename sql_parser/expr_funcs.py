@@ -372,7 +372,7 @@ class SQLApproxQuantiles(SQLCustomFuncs):
             return LB([
                 TB('APPROX_QUANTILES('),
                 self.expr.sqlf(compact), TB(','), TB(' '),
-                self.number.parse(compact),
+                self.number.sqlf(compact),
                 TB(')'),
                 TB('[OFFSET('), TB(' '),
                 self.offset.sqlf(compact),
