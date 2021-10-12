@@ -2,7 +2,7 @@ from sql_parser.dml import SQLCreate
 from sql_parser.ident import SQLIdentifier, SQLIdentifierPath, SQLWildcardPath
 from sql_parser.query import SQLAlias, SQLNamedTable
 from sql_parser.node import SQLNode, SQLNodeList
-from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLSubSelect, SQLWithSelect
+from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLSetOp, SQLSubSelect, SQLWithSelect
 
 from sql_parser import parse
 
@@ -54,6 +54,11 @@ class Refactor:
             self._refactor_identifier_path(parsed, tables)
         elif isinstance(parsed, SQLCreate):
             self._refactor_create(parsed)
+        elif isinstance(parsed, SQLSetOp):
+            if parsed.op in ('UNION', 'UNION ALL'):
+                self._refactor_union(parsed)
+            else:
+                self._refactor_node(parsed, tables)
         elif isinstance(parsed, SQLNode):
             self._refactor_node(parsed, tables)
 
@@ -64,7 +69,13 @@ class Refactor:
 
             # Add CTE into current knowledge
             column_knowledge = {}
-            for field in cte.select.fields:
+
+            if isinstance(cte.select, SQLSetOp) and cte.select.op in ('UNION', 'UNION ALL'):
+                select_statement = cte.select.left
+            else:
+                select_statement = cte.select
+
+            for field in select_statement.fields:
                 if isinstance(field.expr, SQLWildcardPath):
                     continue
                 if field.alias:
@@ -100,7 +111,7 @@ class Refactor:
             
             # Wildcard
             if isinstance(field.expr, SQLWildcardPath):
-                if len(old_tables) == 1:
+                if len(old_tables) == 1 or len(field.expr.names) == 0:
                     column_knowledge = self._get_column_knowledge(old_tables)
                     if len(column_knowledge) == 0:
                         index += 1
@@ -182,7 +193,13 @@ class Refactor:
             
             # Collect column knowledge
             column_knowledge = {}
-            for field in sub_select.query.select.fields:
+
+            if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL'):
+                select_statement = sub_select.query.select.left
+            else:
+                select_statement = sub_select.query.select
+
+            for field in select_statement.fields:
                 if field.alias:
                     column_knowledge[field.alias.alias.value] = None
                 else:
@@ -213,7 +230,13 @@ class Refactor:
                 
                 # Collect column knowledge
                 column_knowledge = {}
-                for field in sub_select.query.select.fields:
+
+                if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL'):
+                    select_statement = sub_select.query.select.left
+                else:
+                    select_statement = sub_select.query.select
+                    
+                for field in select_statement.fields:
                     if isinstance(field.expr, SQLWildcardPath):
                         continue
                     if field.alias:
@@ -310,7 +333,13 @@ class Refactor:
         # Add CTE into current knowledge
         cte_table = parsed.table.table.names[-1].value
         column_knowledge = {}
-        for field in parsed.query.select.fields:
+
+        if isinstance(parsed.query.select, SQLSetOp) and parsed.query.select.op in ('UNION', 'UNION ALL'):
+            select_statement = parsed.query.select.left
+        else:
+            select_statement = parsed.query.select
+
+        for field in select_statement.fields:
             if field.alias:
                 column_knowledge[field.alias.alias.value] = None
             else:
@@ -321,6 +350,9 @@ class Refactor:
             'preserved' : True
         }
 
+    def _refactor_union(self, parsed:SQLSetOp):
+        self._refactor(parsed.left)
+        self._refactor(parsed.right)
 
     def _refactor_node(self, parsed:SQLNode, tables:dict=None):
         for _, val in parsed.children():

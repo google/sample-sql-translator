@@ -430,3 +430,38 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_union(self):
+        sql = """
+        SELECT column_1 FROM table_a
+        UNION ALL
+        SELECT column_1 FROM table_b
+        """
+
+        reference = """
+        SELECT new_column_1 AS column_1 FROM `new_table_a`
+        UNION ALL
+        SELECT new_column_1b AS column_1 FROM `new_table_b`
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        SELECT column_1
+        FROM(
+            SELECT column_1 FROM table_a
+            UNION ALL
+            SELECT column_1 FROM table_b
+        )
+        """
+
+        reference = """
+        SELECT column_1
+        FROM(
+            SELECT new_column_1 AS column_1 FROM `new_table_a`
+            UNION ALL
+            SELECT new_column_1b AS column_1 FROM `new_table_b`
+        )
+        """
+
+        self._assert_equal_sql(sql, reference)
