@@ -216,6 +216,41 @@ class TestRefactor(unittest.TestCase):
 
         self._assert_equal_sql(sql, reference)
 
+        # LEFT JOIN USING, WITH
+        sql = """
+        WITH tb AS(
+            SELECT column_1, column_2b
+            FROM table_b
+        )
+        SELECT 
+        CAST(a.column_1 AS STRING) AS new_column_1,
+        column_2,
+        tb.column_1 AS column_1b,
+        column_2b,
+        FROM table_a AS a
+        LEFT JOIN tb USING(column_1)
+        WHERE 
+        CAST(tb.column_1 AS STRING) = "column_name"
+        """
+
+        reference = """
+        WITH tb AS(
+            SELECT new_column_1b AS column_1, new_column_2b AS column_2b
+            FROM new_table_b
+        )
+        SELECT 
+        CAST(a.new_column_1 AS STRING) AS new_column_1,
+        a.new_column_2 AS column_2,
+        tb.column_1 AS column_1b,
+        tb.column_2b,
+        FROM new_table_a AS a
+        LEFT JOIN tb AS tb ON a.new_column_1 = tb.column_1
+        WHERE 
+        CAST(tb.column_1 AS STRING) = 'column_name'
+        """
+
+        self._assert_equal_sql(sql, reference)
+
     def test_preserved(self):
         sql = """
         SELECT column_1, column_2
