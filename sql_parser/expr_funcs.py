@@ -68,6 +68,7 @@ class SQLCustomFuncs(SQLExpr):
         # TODO(scannell) - add DATE, TIME, DATETIME, TIMESTAMP literals
         return (SQLCAST.consume(lex) or
                 SQLDate.consume(lex) or
+                SQLTime.consume(lex) or
                 SQLCount.consume(lex) or
                 SQLExists.consume(lex) or
                 SQLInterval.consume(lex) or
@@ -302,6 +303,34 @@ class SQLDate(SQLCustomFuncs):
         date_part = SQLIdentifier.parse(lex)
         lex.expect(')')
         return SQLDate(name, SQLNodeList((date_expr, count, date_part)))
+
+
+@dataclass(frozen=True)
+class SQLTime(SQLCustomFuncs):
+    name: str
+    args: SQLNodeList
+
+    def sqlf(self, compact):
+        return LB([
+            TB(self.name), TB('('), self.args[0].sqlf(True),
+            TB(', '), TB('INTERVAL'), TB(' '),
+            self.args[1].sqlf(True), TB(' '), self.args[2].sqlf(True),
+            TB(')')
+        ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLTime]':
+        name = lex.consume('TIME_ADD') or lex.consume('TIME_SUB')
+        if not name:
+            return None
+        lex.expect('(')
+        date_expr = SQLExpr.parse(lex)
+        lex.expect(',')
+        lex.expect('INTERVAL')
+        count = SQLExpr.parse(lex)
+        date_part = SQLIdentifier.parse(lex)
+        lex.expect(')')
+        return SQLTime(name, SQLNodeList((date_expr, count, date_part)))
 
 
 @dataclass(frozen=True)
