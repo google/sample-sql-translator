@@ -2,7 +2,7 @@ from sql_parser.dml import SQLCreate
 from sql_parser.ident import SQLIdentifier, SQLIdentifierPath, SQLWildcardPath
 from sql_parser.query import SQLAlias, SQLNamedTable
 from sql_parser.node import SQLNode, SQLNodeList
-from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLWithSelect
+from sql_parser.query_impl import SQLField, SQLFrom, SQLJoin, SQLSelect, SQLSubSelect, SQLWithSelect
 
 from sql_parser import parse
 
@@ -60,11 +60,13 @@ class Refactor:
     def _refactor_with_select(self, parsed:SQLWithSelect):
         cte_tables = [table.value for table in parsed.tables]
         for i, cte in enumerate(parsed.sqls):
-            self._refactor(parsed.sqls)
+            self._refactor(cte)
 
             # Add CTE into current knowledge
             column_knowledge = {}
             for field in cte.select.fields:
+                if isinstance(field.expr, SQLWildcardPath):
+                    continue
                 if field.alias:
                     column_knowledge[field.alias.alias.value] = None
                 else:
@@ -92,13 +94,17 @@ class Refactor:
         
         index = 0
         while True:
+            if index == len(parsed.fields):
+                break
             field = parsed.fields[index]
             
             # Wildcard
             if isinstance(field.expr, SQLWildcardPath):
                 if len(old_tables) == 1:
                     column_knowledge = self._get_column_knowledge(old_tables)
-                    
+                    if len(column_knowledge) == 0:
+                        index += 1
+                        continue
                     # Omit columns in EXCEPT
                     except_ids = [column_id.value for column_id in field.expr.except_ids]
                     column_names = []
@@ -122,6 +128,10 @@ class Refactor:
                             table = t
                             break
                     column_knowledge = self._get_column_knowledge({table: table_alias})
+                    
+                    if len(column_knowledge) == 0:
+                        index += 1
+                        continue
 
                     # Omit columns in EXCEPT
                     except_ids = [column_id.value for column_id in field.expr.except_ids]
@@ -149,8 +159,6 @@ class Refactor:
             self._refactor(field, old_tables)
             
             index += 1
-            if index == len(parsed.fields):
-                break
 
         if parsed.where_expr is not None:
             self._refactor(parsed.where_expr, old_tables)
@@ -161,15 +169,66 @@ class Refactor:
             table_id = parsed.base.table.names[0].value
             alias = None if parsed.base.alias is None else parsed.base.alias.alias.value
             tables[table_id] = alias
-
-        self._refactor(parsed.base)
+            self._refactor(parsed.base)
+        elif isinstance(parsed.base, SQLSubSelect):
+            sub_select = parsed.base
+            self._refactor(sub_select)
+            if sub_select.alias:
+                table_alias = sub_select.alias.alias.value
+                table_name = table_alias
+            else:
+                table_alias = '*base'
+                table_name = ''
+            
+            # Collect column knowledge
+            column_knowledge = {}
+            for field in sub_select.query.select.fields:
+                if field.alias:
+                    column_knowledge[field.alias.alias.value] = None
+                else:
+                    column_knowledge[field.expr.names[-1].value] = None
+            additional_knowledge = {
+                table_name : {
+                    'new_table' : table_name,
+                    'column_knowledge' : column_knowledge,
+                    'preserved' : True
+                }
+            }
+            self._knowledge = dict(self._knowledge, **additional_knowledge)
 
         for join_item in parsed.joins:
             if isinstance(join_item.table, SQLNamedTable):
                 table_id = join_item.table.table.names[0].value
                 alias = None if join_item.table.alias is None else join_item.table.alias.alias.value
                 tables[table_id] = alias
-
+            elif isinstance(join_item.table, SQLSubSelect):
+                sub_select = join_item.table
+                self._refactor(sub_select, tables)
+                if sub_select.alias:
+                    table_alias = sub_select.alias.alias.value
+                    table_name = table_alias
+                else:
+                    table_alias = '*base'
+                    table_name = ''
+                
+                # Collect column knowledge
+                column_knowledge = {}
+                for field in sub_select.query.select.fields:
+                    if isinstance(field.expr, SQLWildcardPath):
+                        continue
+                    if field.alias:
+                        column_knowledge[field.alias.alias.value] = None
+                    else:
+                        column_knowledge[field.expr.names[-1].value] = None
+                additional_knowledge = {
+                    table_name : {
+                        'new_table' : table_name,
+                        'column_knowledge' : column_knowledge,
+                        'preserved' : True
+                    }
+                }
+                self._knowledge = dict(self._knowledge, **additional_knowledge)
+                tables[table_name] = table_alias
             self._refactor(join_item, tables)
 
     def _refactor_named_table(self, parsed:SQLNamedTable):
@@ -177,7 +236,7 @@ class Refactor:
         if table_id in self._knowledge.keys():
             if not self._knowledge[table_id]['preserved']:
                 table_id = self._knowledge[table_id]['new_table']
-        parsed.table.names[-1].value = '`' + table_id + '`'
+        parsed.table.names[-1].value = '`' + table_id.strip('`') + '`'
 
     def _refactor_field(self, parsed:SQLField, tables:dict):
         if isinstance(parsed.expr, SQLIdentifierPath):
@@ -218,7 +277,8 @@ class Refactor:
             self._refactor(parsed.expr, tables)
 
     def _refactor_join(self, parsed:SQLJoin, tables:dict):
-        self._refactor(parsed.table)
+        if isinstance(parsed.table, SQLNamedTable):
+            self._refactor(parsed.table)
         if parsed.join_expr:
             self._refactor(parsed.join_expr, tables)
 
@@ -277,7 +337,15 @@ class Refactor:
                                     else from_tables.base.alias.alias.value
             else:
                 not_found_tables.append(table_id)
-        
+        elif isinstance(from_tables.base, SQLSubSelect):
+            if from_tables.base.alias:
+                table_id = from_tables.base.alias.alias.value
+                table_alias = table_id
+            else:
+                table_id = ''
+                table_alias = '*base'
+            tables[table_id]  = table_alias
+
         for join_item in from_tables.joins:
             if isinstance(join_item.table, SQLNamedTable):
                 table_id = join_item.table.table.names[-1].value
@@ -286,6 +354,15 @@ class Refactor:
                                         else join_item.table.alias.alias.value
                 else:
                     not_found_tables.append(table_id)
+            elif isinstance(join_item.table, SQLSubSelect):
+                if join_item.table.alias:
+                    table_id = join_item.table.alias.alias.value
+                    table_alias = table_id
+                else:
+                    table_id = ''
+                    table_alias = '*base'
+                tables[table_id]  = table_id
+
         
         not_found_tables = set(not_found_tables)
         return tables, not_found_tables
@@ -301,7 +378,7 @@ class Refactor:
                                                 old_column : old_column
                                                 for old_column, _ in column_knowledge_from_table.items()
                                             }
-            if alias:
+            if alias and alias[0] != '*':
                     column_knowledge_from_table = {
                                                     old_column : '{}.{}'.format(alias, new_column)
                                                     for old_column, new_column in column_knowledge_from_table.items()

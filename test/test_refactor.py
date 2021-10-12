@@ -387,3 +387,46 @@ class TestRefactor(unittest.TestCase):
         """
 
         self._assert_equal_sql(sql, reference)
+
+    def test_nested_select(self):
+        sql = """
+        SELECT column_1
+        FROM(
+            SELECT * FROM table_a
+        )
+        """
+
+        reference = """
+        SELECT column_1
+        FROM(
+            SELECT new_column_1 AS column_1,
+            new_column_2 AS column_2,
+            new_column_3 AS column_3,
+            FROM new_table_a
+        )
+        """
+
+        self._assert_equal_sql(sql, reference)
+
+        sql = """
+        SELECT a.column_1, b.column_2b
+        FROM table_b AS b
+        LEFT JOIN (
+            SELECT * FROM table_a
+        ) a
+        USING(column_1)
+        """
+
+        reference = """
+        SELECT a.column_1, b.new_column_2b AS column_2b
+        FROM new_table_b AS b
+        LEFT JOIN (
+            SELECT new_column_1 AS column_1,
+            new_column_2 AS column_2,
+            new_column_3 AS column_3,
+            FROM new_table_a
+        ) AS a
+        ON b.new_column_1b = a.column_1
+        """
+
+        self._assert_equal_sql(sql, reference)
