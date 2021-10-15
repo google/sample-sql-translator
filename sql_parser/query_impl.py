@@ -54,7 +54,7 @@ class SQLSetOp(SQLQuery):
              self.right.sqlf(compact)])
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLField(SQLNode):
     expr: SQLNode
     alias: Optional[SQLAlias]
@@ -194,7 +194,7 @@ class SQLOrderedQuery(SQLQuery):
         ])
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLSelect(SQLQuery):
     fields: SQLNodeList[SQLField]
     where_expr: Optional[SQLExpr] = None
@@ -524,6 +524,8 @@ class SQLJoin(SQLNode):
             join_expr = None
             while True:
                 field = SQLIdentifierPath.parse(lex)
+                if join_table.alias is None:
+                    join_table.alias = SQLAlias(SQLIdentifier(join_table.table.names[-1].value))
                 right = SQLIdentifierPath(SQLNodeList([join_table.alias.alias]) + field.names)
                 if join_expr is None: 
                     join_expr = SQLBiOp('=', field, right)

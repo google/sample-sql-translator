@@ -43,7 +43,7 @@ class SQLAlias(SQLNode):
         return SQLAlias(alias)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLTableSource(SQLNode):
 
     @staticmethod
@@ -70,7 +70,7 @@ class SQLTableSource(SQLNode):
         return SQLNamedTable.parse(lex, False)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class SQLNamedTable(SQLTableSource):
     table: SQLIdentifierPath
     alias: Optional[SQLAlias] = None

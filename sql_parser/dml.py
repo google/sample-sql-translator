@@ -375,10 +375,7 @@ class SQLCreate(SQLDML):
                 self.query.sqlf(False),
             ])
 
-        return CB([
-            LB(lines),
-            SB(stack),
-        ])
+        return SB(stack)
 
     @staticmethod
     def consume(lex):
@@ -387,7 +384,9 @@ class SQLCreate(SQLDML):
 
         #  Find CFREATE OR REPLACE TABLE clause
         clause = None
-        if lex.consume('OR'):
+        if lex.consume(['TEMP', 'TABLE']):
+            clause = 'CREATE TEMP TABLE'
+        elif lex.consume('OR'):
             lex.expect('REPLACE')
             lex.expect('TABLE')
             clause = 'CREATE OR REPLACE TABLE'

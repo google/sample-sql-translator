@@ -122,6 +122,12 @@ class TestExpr(unittest.TestCase):
         self.exprt('date_sub(myDateVar, INTERVAL b QUARTER)',
                    'DATE_SUB(myDateVar,INTERVAL b QUARTER)')
 
+        # Time
+        self.exprt('TIME_ADD(a, INTERVAL 5 minute)',
+                    'TIME_ADD(a,INTERVAL 5 minute)')
+        self.exprt('TIME_SUB(a, INTERVAL b second)',
+                    'TIME_SUB(a,INTERVAL b second)')
+
         # Cast
         self.exprt('cast(myVar AS TYPE)',
                    'CAST(myVar AS TYPE)')
