@@ -20,7 +20,6 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    package_dir={"": "sql_refactor"},
-    # packages=setuptools.find_packages(where="sql_refactor"),
+    packages=['sql_refactor', 'sql_parser', 'rfmt'],
     python_requires=">=3.7.9",
 )
