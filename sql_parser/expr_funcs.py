@@ -323,7 +323,7 @@ class SQLTime(SQLCustomFuncs):
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLTime]':
-        name = lex.consume('TIME_ADD') or lex.consume('TIME_SUB')
+        name = lex.consume('TIME_ADD') or lex.consume('TIME_SUB')  or lex.consume('TIMESTAMP_ADD')  or lex.consume('TIMESTAMP_SUB')
         if not name:
             return None
         lex.expect('(')
