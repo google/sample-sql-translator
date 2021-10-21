@@ -18,8 +18,10 @@ from typing import Optional
 
 from rfmt.blocks import LineBlock as LB
 from rfmt.blocks import TextBlock as TB
+from rfmt.blocks import StackBlock as SB
 from rfmt.blocks import ChoiceBlock as CB
 from rfmt.blocks import WrapBlock as WB
+from sql_parser.query_impl import SQLField
 
 from .utils import with_commas
 
@@ -75,7 +77,8 @@ class SQLCustomFuncs(SQLExpr):
                 SQLAnalyticNavigation.consume(lex) or
                 SQLExtract.consume(lex) or
                 SQLCoalesce.consume(lex) or
-                SQLApproxQuantiles.consume(lex))
+                SQLApproxQuantiles.consume(lex) or
+                SQLStructFunction.consume(lex))
 
 
 @dataclass(frozen=True)
@@ -408,3 +411,29 @@ class SQLApproxQuantiles(SQLCustomFuncs):
             lex.expect(']')
 
         return SQLApproxQuantiles(expr, number, offset)
+
+@dataclass(frozen=True)
+class SQLStructFunction(SQLCustomFuncs):
+    expr: SQLNodeList[SQLNode]
+
+    def sqlf(self, compact):
+        return LB([
+            TB('STRUCT('),
+            SB(with_commas(compact, self.expr)),
+            TB(')'),
+        ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLStructFunction]':
+        if not lex.consume('STRUCT('):
+            return None
+
+        expr = []
+        while True:
+            expr.append(SQLField.parse(lex))
+            if not lex.consume(','):
+                break
+        lex.expect(')')
+
+        expr = SQLNodeList(expr)
+        return SQLStructFunction(expr)
