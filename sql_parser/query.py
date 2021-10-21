@@ -54,7 +54,7 @@ class SQLTableSource(SQLNode):
         if lex.consume('UNNEST'):
             lex.expect('(')
             name = SQLIdentifier('UNNEST')
-            arg = SQLIdentifierPath.parse(lex)
+            arg = SQLFuncExpr.parse(lex) or SQLIdentifierPath.parse(lex) 
             lex.expect(')')
             alias = SQLAlias.consume(lex)
             expr = SQLFuncExpr(SQLNodeList([name]), SQLNodeList([arg]))
