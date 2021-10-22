@@ -32,6 +32,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Bump Version
+      run: |
+        git config --global user.email "maztohir@gmail.com"
+        git config --global user.name "version-bump"
+        bump2version --tag release
+        bump2version patch
+        git push -o ci.skip -f --tags origin HEAD:${CI_COMMIT_REF_NAME}
+
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:

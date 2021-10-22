@@ -1,5 +1,5 @@
 import unittest
-from sql_refactor.refactor import Refactor
+from sql_refactor import Refactor
 
 class TestRefactor(unittest.TestCase):
 
