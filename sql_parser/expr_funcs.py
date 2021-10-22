@@ -425,9 +425,10 @@ class SQLStructFunction(SQLCustomFuncs):
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLStructFunction]':
-        if not lex.consume('STRUCT('):
+        if not lex.consume('STRUCT'):
             return None
-
+            
+        lex.expect('(')
         expr = []
         while True:
             expr.append(SQLField.parse(lex))
