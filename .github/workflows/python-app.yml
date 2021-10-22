@@ -27,13 +27,17 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
     - name: Bump Version
       run: |
         git config --global user.email "maztohir@gmail.com"
         git config --global user.name "version-bump"
         bump2version --tag release
         bump2version patch
-        git push -o ci.skip -f --tags origin HEAD:${CI_COMMIT_REF_NAME}
+        git push -o ci.skip -f --tags origin HEAD:${{ steps.extract_branch.outputs.branch }}
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
