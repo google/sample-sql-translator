@@ -38,7 +38,11 @@ jobs:
         git remote add github "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
         bump2version --tag release
         bump2version patch
-        git push -o ci.skip -f --tags HEAD:${GITHUB_REF}
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
