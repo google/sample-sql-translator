@@ -27,12 +27,6 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
-  
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
     - name: Bump Version
       run: |
         git config --global user.email "maztohir@gmail.com"
@@ -40,7 +34,6 @@ jobs:
         bump2version --tag release
         bump2version patch
         git push -o ci.skip -f --tags origin HEAD:${CI_COMMIT_REF_NAME}
-
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
