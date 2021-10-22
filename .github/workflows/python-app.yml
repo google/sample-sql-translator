@@ -29,6 +29,7 @@ jobs:
         pytest
   
   publish:
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
