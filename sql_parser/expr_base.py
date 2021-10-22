@@ -346,8 +346,8 @@ class SQLAnalytic(SQLExpr):
     @staticmethod
     def _parse_frame_boundary(lex):
         if lex.consume('UNBOUNDED'):
-            lex.expect('PRECEDING')
-            return 'UNBOUNDED PRECEDING'
+            typ = lex.consume('PRECEDING') or lex.consume('FOLLOWING') or lex.error('Expected PRECEDING or FOLLOWING')
+            return 'UNBOUNDED {}'.format(typ)
 
         if lex.consume('CURRENT'):
             lex.expect('ROW')
