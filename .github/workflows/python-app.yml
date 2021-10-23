@@ -16,9 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        persist-credentials: false
-        fetch-depth: 0
     - name: Set up Python 3.8.3
       uses: actions/setup-python@v2
       with:
@@ -32,15 +29,22 @@ jobs:
         pytest
     - name: Bump Version
       run: |
-        git config --global user.email "maztohir@gmail.com"
-        git config --global user.name "version-bump"
-        bump2version patch
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          bump2version patch
+          git push --tags
+      # run: |
+      #   git config --global user.email "maztohir@gmail.com"
+      #   git config --global user.name "version-bump"
     # - name: Push changes
     #   uses: ad-m/github-push-action@master
     #   with:
     #     github_token: ${{ secrets.GITHUB_TOKEN }}
     #     branch: ${{ github.ref }}
     #     tags: true
+    - name: Build dist
+      run: |
+        python setup.py sdist bdist_wheel
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
