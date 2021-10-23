@@ -1,0 +1,5 @@
+pytest==6.2.5
+twine==1.13.0
+wheel
+bump2version==1.0.1
+mock==4.0.3
