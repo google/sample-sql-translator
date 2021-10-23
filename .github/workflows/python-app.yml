@@ -28,15 +28,18 @@ jobs:
       run: |
         pytest
     - name: Bump Version
+      if: github.ref == 'refs/heads/master'
       run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           bump2version patch
           git push --tags
     - name: Build dist
+      if: github.ref == 'refs/heads/master'
       run: |
         python setup.py sdist bdist_wheel
     - name: Publish to PyPI
+      if: github.ref == 'refs/heads/master'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
