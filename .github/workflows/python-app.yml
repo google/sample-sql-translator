@@ -35,12 +35,12 @@ jobs:
         git config --global user.email "maztohir@gmail.com"
         git config --global user.name "version-bump"
         bump2version patch
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.ref }}
-        tags: true
+    # - name: Push changes
+    #   uses: ad-m/github-push-action@master
+    #   with:
+    #     github_token: ${{ secrets.GITHUB_TOKEN }}
+    #     branch: ${{ github.ref }}
+    #     tags: true
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
