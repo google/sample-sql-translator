@@ -198,6 +198,111 @@ class SQLArrayAgg(SQLExpr):
 
 
 @dataclass(frozen=True)
+class SQLStringAgg(SQLExpr):
+    is_distinct: bool
+    expr: SQLNode
+    delimiter: Optional[SQLNode]
+    nulls: Optional[str]
+    order_limit_offset: Optional[SQLOrderLimitOffset]
+    analytic: Optional[SQLNode]
+    offset: Optional[int]
+
+    def sqlf(self, compact):
+        lines = [TB('STRING_AGG(')]
+        if self.is_distinct:
+            lines.append(TB('DISTINCT '))
+        lines.append(self.expr.sqlf(True))
+        if self.delimiter:
+            lines.append(self.delimiter.as_sql())
+        if self.nulls:
+            lines.append(TB(self.nulls) + ' NULLS')
+        if self.order_limit_offset:
+            lines.append(self.order_limit_offset.sqlf(True))
+        if self.analytic:
+            lines.append(self.analytic.sqlf(True))
+        lines.append(TB(')'))
+        if self.offset:
+            lines.append(TB('[OFFSET('))
+            lines.append(TB(' ') )
+            lines.append(self.offset.sqlf(compact))
+            lines.append(TB(')]'))
+
+        compact_sql = LB(lines)
+
+        if compact:
+            return compact_sql
+
+        stack = [TB('STRING_AGG(')]
+        indent = []
+        if self.is_distinct:
+            args = [TB('DISTINCT '), self.expr.sqlf(compact)]
+        else:
+            args = [self.expr.sqlf(compact)]
+        if self.delimiter:
+            args.append(self.delimiter.as_sql())
+        indent.append(LB(args))
+        
+        if self.nulls:
+            indent.append(TB(self.nulls) + ' NULLS')
+        if self.order_limit_offset:
+            indent.append(self.order_limit_offset.sqlf(compact))
+        if self.analytic:
+            indent.append(self.analytic.sqlf(compact))
+        stack.append(IB(SB(indent)))
+        stack.append(TB(')'))
+        if self.offset:
+            stack.append(TB('[OFFSET('))
+            stack.append(TB(' ') )
+            stack.append(self.offset.sqlf(compact))
+            stack.append(TB(')]'))
+
+        return CB([
+            compact_sql,
+            SB(stack)
+        ])
+
+    @staticmethod
+    def consume(lex) -> 'Optional[SQLStringAgg]':
+        if not lex.consume('STRING_AGG'):
+            return None
+
+        lex.expect('(')
+
+        is_distinct = bool(lex.consume('DISTINCT'))
+
+        expr = SQLExpr.parse(lex)
+        delimiter = None
+
+        if lex.consume(','):
+            delimiter = SQLConstant.consume(lex)
+
+        nulls = None
+        if lex.consume('IGNORE'):
+            nulls = 'IGNORE'
+            lex.expect('NULLS')
+        elif lex.consume('RESPECT'):
+            nulls = 'RESPECT'
+            lex.expect('NULLS')
+
+        order_limit_offset = SQLOrderLimitOffset.consume(lex)
+
+        analytic = SQLAnalytic.consume(lex)
+
+        lex.expect(')')
+
+        offset = None
+        if lex.consume('['):
+            lex.expect('OFFSET')
+            lex.consume('(')
+            offset = SQLNumber.parse(lex)
+            lex.consume(')')
+            lex.expect(']')
+
+        return SQLStringAgg(is_distinct, expr, delimiter, nulls,
+                           order_limit_offset, analytic, offset)
+
+
+@dataclass(frozen=True)
 class SQLExprWithAnalytic(SQLExpr):
     function: SQLExpr
     analytic: SQLNode
@@ -221,6 +326,7 @@ class SQLExprWithAnalytic(SQLExpr):
         expr: SQLExpr = (SQLConstant.consume(lex) or
                          SQLArrayLiteral.consume(lex) or
                          SQLArrayAgg.consume(lex) or
+                         SQLStringAgg.consume(lex) or
                          SQLArraySelect.consume(lex) or
                          SQLCustomFuncs.consume(lex) or
                          SQLIdentifierPath.parse(lex))
