@@ -199,16 +199,18 @@ class SQLArrayAgg(SQLExpr):
 
 @dataclass(frozen=True)
 class SQLStringAgg(SQLExpr):
+    name: str
     is_distinct: bool
     expr: SQLNode
-    delimiter: Optional[SQLNode]
+    delimiter: Optional[str]
     nulls: Optional[str]
     order_limit_offset: Optional[SQLOrderLimitOffset]
     analytic: Optional[SQLNode]
-    offset: Optional[int]
+    analytic_name: Optional[str]
+    number: Optional[int]
 
     def sqlf(self, compact):
-        lines = [TB('STRING_AGG(')]
+        lines = [TB('{}('.format(self.name))]
         if self.is_distinct:
             lines.append(TB('DISTINCT '))
         lines.append(self.expr.sqlf(True))
@@ -221,10 +223,10 @@ class SQLStringAgg(SQLExpr):
         if self.analytic:
             lines.append(self.analytic.sqlf(True))
         lines.append(TB(')'))
-        if self.offset:
-            lines.append(TB('[OFFSET('))
+        if self.number:
+            lines.append(TB('[{}('.format(self.analytic_name)))
             lines.append(TB(' ') )
-            lines.append(self.offset.sqlf(compact))
+            lines.append(self.number.sqlf(compact))
             lines.append(TB(')]'))
 
         compact_sql = LB(lines)
@@ -232,7 +234,7 @@ class SQLStringAgg(SQLExpr):
         if compact:
             return compact_sql
 
-        stack = [TB('STRING_AGG(')]
+        stack = [TB('{}('.format(self.name))]
         indent = []
         if self.is_distinct:
             args = [TB('DISTINCT '), self.expr.sqlf(compact)]
@@ -250,10 +252,10 @@ class SQLStringAgg(SQLExpr):
             indent.append(self.analytic.sqlf(compact))
         stack.append(IB(SB(indent)))
         stack.append(TB(')'))
-        if self.offset:
-            stack.append(TB('[OFFSET('))
+        if self.number:
+            stack.append(TB('[{}}('.format(self.analytic_name)))
             stack.append(TB(' ') )
-            stack.append(self.offset.sqlf(compact))
+            stack.append(self.number.sqlf(compact))
             stack.append(TB(')]'))
 
         return CB([
@@ -263,7 +265,8 @@ class SQLStringAgg(SQLExpr):
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLStringAgg]':
-        if not lex.consume('STRING_AGG'):
+        name = lex.consume('STRING_AGG') or lex.consume('SPLIT')
+        if not name:
             return None
 
         lex.expect('(')
@@ -290,16 +293,17 @@ class SQLStringAgg(SQLExpr):
 
         lex.expect(')')
 
-        offset = None
+        analytic_name = None
+        number = None
         if lex.consume('['):
-            lex.expect('OFFSET')
+            analytic_name = SQLConstant.consume(lex)
             lex.consume('(')
-            offset = SQLNumber.parse(lex)
+            number = SQLNumber.parse(lex)
             lex.consume(')')
             lex.expect(']')
 
-        return SQLStringAgg(is_distinct, expr, delimiter, nulls,
-                           order_limit_offset, analytic, offset)
+        return SQLStringAgg(name, is_distinct, expr, delimiter, nulls,
+                           order_limit_offset, analytic, analytic_name, number)
 
 
 @dataclass(frozen=True)
