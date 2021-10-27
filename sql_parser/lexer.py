@@ -274,7 +274,10 @@ class SQLLexer:
 
         v = ''.join(v)
         if v.upper() in RESERVED_WORDS:
-            return None
+            if is_escaped:
+                v = ''.join((is_escaped, v, is_escaped))
+            else:
+                return None
 
         if is_escaped:
             pos += 1

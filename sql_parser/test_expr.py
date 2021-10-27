@@ -190,6 +190,10 @@ class TestExpr(unittest.TestCase):
         self.exprt('ARRAY_AGG(DISTINCT   x  LIMIT  1)',
                    'ARRAY_AGG(DISTINCT x LIMIT 1)')
 
+    def test_string_agg(self):
+        self.exprt('STRING_AGG(DISTINCT   x )',
+                   'STRING_AGG(DISTINCT x)')
+
     def test_array_lit(self):
         self.exprt('[1,2,3,4]', '[1,2,3,4]')
 
