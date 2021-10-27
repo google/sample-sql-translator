@@ -344,12 +344,18 @@ class Refactor:
         cte_table = parsed.table.table.names[-1].value
         column_knowledge = {}
 
-        if isinstance(parsed.query.select, SQLSetOp) and parsed.query.select.op in ('UNION', 'UNION ALL'):
-            select_statement = parsed.query.select.left
-        elif isinstance(parsed.query.select, SQLOrderedQuery):
-            select_statement = parsed.query.select.query
-        else:
-            select_statement = parsed.query.select
+        select_statement = parsed.query.select
+        while True:
+            if isinstance(select_statement, SQLSelect):
+                break
+            if isinstance(select_statement, SQLSetOp) and select_statement.op in ('UNION', 'UNION ALL'):
+                select_statement = select_statement.left
+            elif isinstance(select_statement, SQLOrderedQuery):
+                select_statement = select_statement.query
+            elif isinstance(select_statement, SQLSubSelect):
+                select_statement = select_statement.query.select
+            else:
+                break
 
         for field in select_statement.fields:
             if field.alias:
