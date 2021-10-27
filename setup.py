@@ -5,7 +5,7 @@ with open("sql_refactor/README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="sql-refactor",
-    version="0.0.1",
+    version="0.0.2",
     author="Muhamad Tohir",
     author_email="maztohir@gmail.com",
     description="Transform column and table name to desired one",
