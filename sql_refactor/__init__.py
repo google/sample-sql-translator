@@ -56,7 +56,7 @@ class Refactor:
         elif isinstance(parsed, SQLCreate):
             self._refactor_create(parsed)
         elif isinstance(parsed, SQLSetOp):
-            if parsed.op in ('UNION', 'UNION ALL'):
+            if parsed.op in ('UNION', 'UNION ALL', 'UNION DISTINCT'):
                 self._refactor_union(parsed)
             else:
                 self._refactor_node(parsed, tables)
@@ -71,12 +71,18 @@ class Refactor:
             # Add CTE into current knowledge
             column_knowledge = {}
 
-            if isinstance(cte.select, SQLSetOp) and cte.select.op in ('UNION', 'UNION ALL'):
-                select_statement = cte.select.left
-            elif isinstance(cte.select, SQLOrderedQuery):
-                select_statement = cte.select.query
-            else:
-                select_statement = cte.select
+            select_statement = cte.select
+            while True:
+                if isinstance(select_statement, SQLSelect):
+                    break
+                if isinstance(select_statement, SQLSetOp) and select_statement.op in ('UNION', 'UNION ALL', 'UNION DISTINCT'):
+                    select_statement = select_statement.left
+                elif isinstance(select_statement, SQLOrderedQuery):
+                    select_statement = select_statement.query
+                elif isinstance(select_statement, SQLSubSelect):
+                    select_statement = select_statement.query.select
+                else:
+                    break
 
             for field in select_statement.fields:
                 if isinstance(field.expr, SQLWildcardPath):
@@ -200,7 +206,7 @@ class Refactor:
             # Collect column knowledge
             column_knowledge = {}
 
-            if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL'):
+            if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL', 'UNION DISTINCT'):
                 select_statement = sub_select.query.select.left
             elif isinstance(sub_select.query.select, SQLOrderedQuery):
                 select_statement = sub_select.query.select.query
@@ -239,7 +245,7 @@ class Refactor:
                 # Collect column knowledge
                 column_knowledge = {}
 
-                if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL'):
+                if isinstance(sub_select.query.select, SQLSetOp) and sub_select.query.select.op in ('UNION', 'UNION ALL', 'UNION DISTINCT'):
                     select_statement = sub_select.query.select.left
                 elif isinstance(sub_select.query.select, SQLOrderedQuery):
                     select_statement = sub_select.query.select.query
@@ -348,7 +354,7 @@ class Refactor:
         while True:
             if isinstance(select_statement, SQLSelect):
                 break
-            if isinstance(select_statement, SQLSetOp) and select_statement.op in ('UNION', 'UNION ALL'):
+            if isinstance(select_statement, SQLSetOp) and select_statement.op in ('UNION', 'UNION ALL', 'UNION DISTINCT'):
                 select_statement = select_statement.left
             elif isinstance(select_statement, SQLOrderedQuery):
                 select_statement = select_statement.query
