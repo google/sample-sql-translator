@@ -369,10 +369,10 @@ class SQLAnalytic(SQLExpr):
         lines.append(TB('OVER ('))
         if self.partition_by:
             lines.append(TB('PARTITION BY '))
-            lines.extend(with_commas(True, self.partition_by, ' '))
+            lines.extend(with_commas(True, self.partition_by, ','))
         if self.order_by:
             lines.append(TB(' ORDER BY '))
-            lines.extend(with_commas(True, self.order_by, ' '))
+            lines.extend(with_commas(True, self.order_by, ','))
         if self.range_desc:
             lines.append(TB(self.range_desc))
         lines.append(TB(')'))
