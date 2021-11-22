@@ -215,7 +215,7 @@ class SQLStringAgg(SQLExpr):
             lines.append(TB('DISTINCT '))
         lines.append(self.expr.sqlf(True))
         if self.delimiter:
-            lines.append(self.delimiter.as_sql())
+            lines.append(TB(', '+ self.delimiter.as_sql(compact)))
         if self.nulls:
             lines.append(TB(self.nulls) + ' NULLS')
         if self.order_limit_offset:
@@ -224,10 +224,15 @@ class SQLStringAgg(SQLExpr):
             lines.append(self.analytic.sqlf(True))
         lines.append(TB(')'))
         if self.number:
-            lines.append(TB('[{}('.format(self.analytic_name)))
-            lines.append(TB(' ') )
-            lines.append(self.number.sqlf(compact))
-            lines.append(TB(')]'))
+            if self.analytic_name:
+                lines.append(TB('[{}('.format(self.analytic_name)))
+                lines.append(TB(' ') )
+                lines.append(self.number.sqlf(compact))
+                lines.append(TB(')]'))
+            else:
+                lines.append(TB('['))
+                lines.append(self.number.sqlf(compact))
+                lines.append(TB(']'))
 
         compact_sql = LB(lines)
 
@@ -241,7 +246,7 @@ class SQLStringAgg(SQLExpr):
         else:
             args = [self.expr.sqlf(compact)]
         if self.delimiter:
-            args.append(self.delimiter.as_sql())
+            args.append(TB(', ' + self.delimiter.as_sql(compact)))
         indent.append(LB(args))
         
         if self.nulls:
@@ -253,10 +258,15 @@ class SQLStringAgg(SQLExpr):
         stack.append(IB(SB(indent)))
         stack.append(TB(')'))
         if self.number:
-            stack.append(TB('[{}}('.format(self.analytic_name)))
-            stack.append(TB(' ') )
-            stack.append(self.number.sqlf(compact))
-            stack.append(TB(')]'))
+            if self.analytic_name:
+                stack.append(TB('[{}('.format(self.analytic_name)))
+                stack.append(TB(' ') )
+                stack.append(self.number.sqlf(compact))
+                stack.append(TB(')]'))
+            else:
+                stack.append(TB('['))
+                stack.append(self.number.sqlf(compact))
+                stack.append(TB(']'))
 
         return CB([
             compact_sql,
