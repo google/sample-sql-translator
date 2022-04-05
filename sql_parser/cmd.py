@@ -47,8 +47,7 @@ class SQLTruncate(SQLCommand):
     def sqlf(self, compact):
         return LB([
             TB('TRUNCATE TABLE '),
-            self.table.sqlf(compact=True),
-            TB(';'),
+            self.table.sqlf(compact=True)
         ])
 
     @staticmethod
@@ -70,8 +69,7 @@ class SQLGenerateStatistics(SQLCommand):
     def sqlf(self, compact):
         return LB([
             TB('GENERATE STATISTICS ON '),
-            self.table.sqlf(compact=True),
-            TB(';'),
+            self.table.sqlf(compact=True)
         ])
 
     @staticmethod
@@ -93,7 +91,7 @@ class SQLGroom(SQLCommand):
         return LB([
             TB('GROOM TABLE '),
             self.table.sqlf(compact=True),
-            TB(' RECORDS ALL;'),
+            TB(' RECORDS ALL'),
         ])
 
     @staticmethod
@@ -114,7 +112,7 @@ class SQLTrans(SQLCommand):
     trans: str
 
     def sqlf(self, compact):
-        return TB(self.trans + ';')
+        return TB(self.trans)
 
     @staticmethod
     def consume(lex) -> 'Optional[SQLTrans]':

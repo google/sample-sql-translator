@@ -19,6 +19,8 @@ from typing import Optional
 from dataclasses import dataclass
 
 from rfmt.blocks import StackBlock as SB
+from rfmt.blocks import LineBlock as LB
+from rfmt.blocks import TextBlock as TB
 
 from .node import SQLNodeList
 from .node import SQLNode
@@ -34,7 +36,7 @@ class SQLScript(SQLNode):
     commands: 'SQLNodeList[SQLScript]'
 
     def sqlf(self, compact):
-        return SB([cmd.sqlf(compact) for cmd in self.commands])
+        return SB([LB([cmd.sqlf(compact),TB(';\n')]) for cmd in self.commands])
 
     @staticmethod
     def parse(lex) -> 'SQLScript':

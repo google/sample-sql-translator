@@ -65,7 +65,7 @@ class SQLInsert(SQLDML):
                     TB(' ('),
                 ]),
                 IB(self.sql.sqlf(compact)),
-                TB(');'),
+                TB(')'),
             ])
         return SB([
             LB([
@@ -76,8 +76,7 @@ class SQLInsert(SQLDML):
             IB(
                 SB(with_commas(compact, self.fields, tail=')'))
             ),
-            self.sql.sqlf(compact),
-            TB(';'),
+            self.sql.sqlf(compact)
         ])
 
     @staticmethod
@@ -127,8 +126,7 @@ class SQLDelete(SQLDML):
             LB([
                 TB('WHERE '),
                 self.where_expr.sqlf(compact),
-            ]),
-            TB(';'),
+            ])
         ])
 
     @staticmethod
@@ -245,7 +243,7 @@ class SQLOption(SQLDML):
 class SQLOptions(SQLDML):
     options: SQLNodeList[SQLOption]
 
-    def sqlf(self):
+    def sqlf(self, compact):
         lines = [TB('OPTIONS(')]
         lines.extend(with_commas(True, self.options))
         lines.append(TB(')'))
