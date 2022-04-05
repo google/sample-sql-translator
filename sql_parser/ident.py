@@ -17,6 +17,8 @@
 
 """
 
+import re
+
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
@@ -34,8 +36,20 @@ from .expr import SQLExpr
 class SQLIdentifier(SQLNode):
     value: str
 
+    UNQUOTED_REGEX = re.compile('^[a-zA-Z_][\.A-Za-z0-9_\-:]*$')
+    UNQUOTED_LASTCHAR = re.compile('[a-zA-Z_0-9]')
+
     def sqlf(self, compact):
         del compact
+
+        # Use unquoted string if possible
+        if (SQLIdentifier.UNQUOTED_REGEX.match(self.value) and
+            SQLIdentifier.UNQUOTED_LASTCHAR.match(self.value[-1])):
+            return TB(self.value)
+
+        # Add quoting if needed
+        return TB('`' + self.value + '`')
+
         return TB(self.value)
 
     @staticmethod
