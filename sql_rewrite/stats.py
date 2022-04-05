@@ -35,15 +35,29 @@ class TableOperation(namedtuple('TableOperation', ['table', 'is_write'])):
 def tables(expr):
     ops = set()
 
+    # Return the correct TableOperation
     if isinstance(expr, SQLNamedTable):
         ops.add(TableOperation(str(expr.table), expr.is_write))
         return ops
 
+    # De-duplicate TableDependencies with the WITH tables
     if isinstance(expr, SQLWithSelect):
+
+        # Fetch all Operations from main SELECT
         ops.update(tables(expr.select))
-        ops.difference_update(expr.tables)
+
+        # Fetch all Operations from WITH SELECTs
+        for withsql in expr.sqls:
+          ops.update(tables(withsql))
+
+        # Remove all WITH tables
+        for withtable in expr.tables:
+          op = TableOperation(withtable.value, False)
+          ops.remove(op)
+
         return ops
 
+    # Convert Operations into TableDependencies
     if isinstance(expr, SQLScript):
         for cmd in expr.commands:
             dest = set()
@@ -57,6 +71,7 @@ def tables(expr):
                 ops.add(TableDependency(tuple(dest), tuple(src)))
         return ops
 
+    # Iterate downwards finding the right TableOperations
     if isinstance(expr, SQLNode):
         for _, child in expr.children():
             ops.update(tables(child))
